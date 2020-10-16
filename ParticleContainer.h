@@ -9,11 +9,8 @@
 #include "Particle.h"
 
 class ParticleContainer {
-private:
-    std::vector<Particle> particles;
 public:
-    void addParticle(double x, double y, double z);
-    void addParticle(Particle p);
+    std::vector<Particle> particles;
 };
 
 #endif //BAKOKKOS_PARTICLECONTAINER_H
