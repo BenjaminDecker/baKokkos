@@ -17,8 +17,8 @@ struct Coord3D {
 
 class Particle {
 public:
-    Particle(double x, double y, double z);
-    Particle(Coord3D position);
+    explicit Particle(Coord3D position) : position(position){};
+    Particle(Coord3D position, Coord3D velocity) : position(position), velocity(velocity){};
 
     Coord3D position = {0.0, 0.0, 0.0};
     Coord3D velocity = {0.0, 0.0, 0.0};
