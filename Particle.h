@@ -8,8 +8,12 @@
 #include <array>
 
 class Particle {
+public:
+    Particle(double x, double y, double z);
+    Particle(std::array<double, 3> position);
+
     std::array<double, 3> position;
-    std::array<double, 3> velocity;
+    std::array<double, 3> velocity = {0.0, 0.0, 0.0};
 };
 
 
