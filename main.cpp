@@ -8,11 +8,12 @@ int main (int argc, char *argv[]) {
     double deltaT = 1.0;
     ParticleContainer container;
 
-    //initialize a 100x100x100 cube of particles
+    ///initialize a 100x100x100 cube of particles
+    int idCounter = 0;
     for (int x = 0; x < 100; ++x) {
         for (int y = 0; y < 100; ++y) {
             for (int z = 0; z < 100; ++z) {
-                container.particles.emplace_back(Coord3D{ static_cast<double>(x), static_cast<double>(y), static_cast<double>(z) });
+                container.particles.emplace_back(idCounter++, 0, Coord3D { static_cast<double>(x), static_cast<double>(y), static_cast<double>(z) });
             }
         }
     }
