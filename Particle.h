@@ -4,8 +4,8 @@
 
 #pragma once
 
+#include <iostream>
 #include <cmath>
-
 
 struct Coord3D {
     double x, y, z;
@@ -34,6 +34,16 @@ struct Coord3D {
         y = y + rhs.y;
         z = z + rhs.z;
         return *this;
+    }
+    volatile Coord3D& operator += (volatile const Coord3D& rhs) volatile {
+        x = x + rhs.x;
+        y = y + rhs.y;
+        z = z + rhs.z;
+        return *this;
+    }
+    friend std::ostream& operator << (std::ostream& stream, const Coord3D& obj) {
+        stream << "( " << obj.x << ", " << obj.y << ", " << obj.z << " )";
+        return stream;
     }
 };
 
