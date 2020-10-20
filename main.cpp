@@ -3,65 +3,78 @@
 #include "ParticlePropertiesLibrary.h"
 #include "ParticleContainer.h"
 
-int main (int argc, char *argv[]) {
-    Kokkos::initialize(argc, argv);
-    {
-        constexpr double deltaT = 1.0;
-        ParticlePropertiesLibrary particlePropertiesLibrary;
-        ParticleContainer container;
+int main(int argc, char *argv[]) {
+  Kokkos::initialize(argc, argv);
+  {
+    constexpr int iterations = 1000;
+    constexpr double deltaT = 1.0;
+    constexpr double cubeSideLength = 2;
+    constexpr double epsilon = 1;
+    constexpr double sigma = 1;
+    constexpr double mass = 1;
 
-        particlePropertiesLibrary.addParticleType(0, 1.0, 1.0, 1.0);
+    /*
+    ParticlePropertiesLibrary particlePropertiesLibrary;
+    particlePropertiesLibrary.addParticleType(0, 1.0, 1.0, 1.0);
+     */
 
-        //initialize a 100x100x100 cube of particles
-        int idCounter = 0;
-        for (int x = 0; x < 10; ++x) {
-            for (int y = 0; y < 10; ++y) {
-                for (int z = 0; z < 10; ++z) {
-                    container.particles.emplace_back(idCounter++, 0,
-                                                     Coord3D{static_cast<double>(x), static_cast<double>(y),
-                                                             static_cast<double>(z)});
-                }
-            }
-        }
 
-        Kokkos::parallel_for("calculatePositions", container.particles.size(), KOKKOS_LAMBDA(int i) {
-            auto particle = container.particles.at(i);
-            particle.position = particle.position + particle.velocity * deltaT;
-        });
+    //Creates the particle container and initializes a cube of particles
+    ParticleContainer container(cubeSideLength);
 
-        double epsilon = particlePropertiesLibrary.getEpsilon(0);
-        double sigma = particlePropertiesLibrary.getSigma(0);
+    //Iteration loop
+    for (int timeStep = 0; timeStep < iterations; ++timeStep) {
 
-        for (int i = 0; i < container.particles.size(); ++i) {
-            Particle &particle = container.particles.at(i);
-            Coord3D &totalForce = particle.force;
-            Coord3D &position = particle.position;
-            std::cout << particle.force << std::endl;
-            Kokkos::parallel_reduce("calculateForcesReduce", container.particles.size(),
-                                    KOKKOS_LAMBDA(int n, Coord3D &totalForce) {
-                                        auto otherParticle = container.particles.at(n);
-                                        if (particle != otherParticle) {
-                                            auto distance = position.distanceTo(otherParticle.position);
-                                            auto distanceValue = distance.absoluteValue();
-                                            auto distancePow6 = std::pow(distanceValue, 6);
-                                            auto sigmaPow6 = std::pow(sigma, 6);
+      //Calculate positions
+      Kokkos::parallel_for("calculatePositions", container.size, KOKKOS_LAMBDA(int i) {
+        Coord3D &position = container.positions(i);
+        position = position + container.velocities(i) * deltaT;
+      });
 
-                                            auto forceValue = 24 * epsilon * sigmaPow6 *
-                                                              ((distancePow6 - 2 * sigmaPow6) /
-                                                               (distanceValue * distancePow6 *
-                                                                distancePow6));  // https://www.ableitungsrechner.net/#expr=4%2A%CE%B5%28%28%CF%83%2Fr%29%5E12-%28%CF%83%2Fr%29%5E6%29&diffvar=r
+      //Calculate forces
+      //Iterate over every particle
+      Kokkos::parallel_for("forceIteration", container.size, KOKKOS_LAMBDA(int i) {
+        Coord3D position = container.positions(i);
+        Coord3D totalForce = Coord3D();
 
-                                            auto force = (distance / distanceValue) * forceValue;
-                                            totalForce += force;
-                                        }
-                                    }, totalForce);
-            std::cout << particle.force << std::endl << std::endl;
-        }
+        //Calculate every particle's force contribution
+        Kokkos::parallel_reduce("forceReduction", container.size, KOKKOS_LAMBDA(int n, Coord3D &totalForce) {
 
-        Kokkos::parallel_for("calculateVelocities", container.particles.size(), KOKKOS_LAMBDA(int i) {
+          //Skip the calculation if the two particles are the same
+          if (n == i) {
+            return;
+          }
 
-        });
+          Coord3D distance = position.distanceTo(container.positions(n));
+          double distanceValue = distance.absoluteValue();
+          double distanceValuePow6 = std::pow(distanceValue, 6);
+          double sigmaPow6 = std::pow(sigma, 6);
+
+          // https://www.ableitungsrechner.net/#expr=4%2A%CE%B5%28%28%CF%83%2Fr%29%5E12-%28%CF%83%2Fr%29%5E6%29&diffvar=r
+          double forceValue = (24 * epsilon * sigmaPow6 * (distanceValuePow6 - 2 * sigmaPow6)) /
+              (distanceValue * distanceValuePow6 * distanceValuePow6);
+
+          Coord3D force = ((distance / distanceValue) * forceValue);
+          totalForce += force;
+        }, totalForce);
+
+        //Assign the new total force for this time step
+        container.forces(i) = totalForce;
+      });
+
+      //Calculate the new velocities
+      Kokkos::parallel_for("calculateVelocities", container.size, KOKKOS_LAMBDA(int i) {
+        Coord3D deltaVelocity = (container.forces(i) / mass) * deltaT;
+        container.velocities(i) += deltaVelocity;
+      });
+
+      //Test prints
+      for (int i = 0; i < container.size; ++i) {
+        std::cout << container.positions(i);
+      }
+      std::cout << std::endl;
     }
-    Kokkos::finalize();
-    return 0;
+  }
+  Kokkos::finalize();
+  return 0;
 }
