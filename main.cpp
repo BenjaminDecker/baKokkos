@@ -6,8 +6,8 @@
 int main(int argc, char *argv[]) {
   Kokkos::initialize(argc, argv);
   {
-    constexpr int iterations = 1000;
-    constexpr double deltaT = 1.0;
+    constexpr int iterations = 100000;
+    constexpr double deltaT = 0.0002;
     constexpr double cubeSideLength = 2;
     constexpr double epsilon = 1;
     constexpr double sigma = 1;
@@ -31,9 +31,11 @@ int main(int argc, char *argv[]) {
         position = position + container.velocities(i) * deltaT;
       });
 
+      Kokkos::View<double *> a("a", container.size);
+
       //Calculate forces
       //Iterate over every particle
-      Kokkos::parallel_for("forceIteration", container.size, KOKKOS_LAMBDA(int i) {
+      for (int i = 0; i < container.size; ++i) {
         Coord3D position = container.positions(i);
         Coord3D totalForce = Coord3D();
 
@@ -60,7 +62,32 @@ int main(int argc, char *argv[]) {
 
         //Assign the new total force for this time step
         container.forces(i) = totalForce;
-      });
+      }
+
+
+//      //Calculate forces
+//      Kokkos::parallel_reduce("forceCalculation",
+//                              Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {container.size, container.size}),
+//                              KOKKOS_LAMBDA(int i, int n, Kokkos::View<double*>& b) {
+//                                if (n == i) {
+//                                  return;
+//                                }
+//                                Coord3D distance = container.positions(i).distanceTo(container.positions(n));
+//                                double distanceValue = distance.absoluteValue();
+//
+//                                double distanceValuePow6 =
+//                                    distanceValue * distanceValue * distanceValue * distanceValue * distanceValue
+//                                        * distanceValue;
+//                                double sigmaPow6 = std::pow(sigma, 6);
+//
+//                                // https://www.ableitungsrechner.net/#expr=4%2A%CE%B5%28%28%CF%83%2Fr%29%5E12-%28%CF%83%2Fr%29%5E6%29&diffvar=r
+//                                double forceValue = (24 * epsilon * sigmaPow6 * (distanceValuePow6 - 2 * sigmaPow6)) /
+//                                    (distanceValue * distanceValuePow6 * distanceValuePow6);
+//
+//                                Coord3D force = ((distance / distanceValue) * forceValue);
+//                                b(i) += forceValue;
+//                              }, a);
+
 
       //Calculate the new velocities
       Kokkos::parallel_for("calculateVelocities", container.size, KOKKOS_LAMBDA(int i) {
