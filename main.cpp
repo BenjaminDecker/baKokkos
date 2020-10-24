@@ -19,10 +19,16 @@ int main(int argc, char *argv[]) {
     particlePropertiesLibrary.addParticleType(0, 1.0, 1.0, 1.0);
      */
 
-
+    std::cout << "Initializing particles..." << std::endl;
+    Kokkos::Timer timer1;
     //Creates the particle container and initializes a cube of particles
     ParticleContainer container(cubeSideLength);
+    double time1 = timer1.seconds();
+    std::cout << "Finished initializing " << container.size << " particles." << std::endl << "Time: " << time1 << " seconds" << std::endl << std::endl;
 
+
+    std::cout << "Running Simulation..." << std::endl;
+    Kokkos::Timer timer2;
     //Iteration loop
     for (int timeStep = 0; timeStep < iterations; ++timeStep) {
 
@@ -69,12 +75,15 @@ int main(int argc, char *argv[]) {
         container.velocities(i) += deltaVelocity;
       });
 
-      //Test prints
-      for (int i = 0; i < container.size; ++i) {
-        std::cout << container.positions(i);
-      }
-      std::cout << std::endl;
+//      //Test prints
+//      for (int i = 0; i < container.size; ++i) {
+//        std::cout << container.positions(i);
+//      }
+//      std::cout << std::endl;
     }
+    double time2 = timer2.seconds();
+    std::cout << "Finished simulating"<< std::endl << "Time: " << time2 << " seconds" << std::endl << std::endl;
+
   }
   Kokkos::finalize();
   return 0;
