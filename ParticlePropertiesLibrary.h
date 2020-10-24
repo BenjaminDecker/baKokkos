@@ -7,7 +7,7 @@
 #include <vector>
 
 struct ParticleType {
-  int typeID;
+  unsigned int typeID;
   double epsilon;
   double sigma;
   double mass;
@@ -16,7 +16,7 @@ struct ParticleType {
 class ParticlePropertiesLibrary {
   std::vector<ParticleType> particleProperties;
  public:
-  void addParticleType(int typeID, double epsilon, double sigma, double mass) {
+  void addParticleType(unsigned int typeID, double epsilon, double sigma, double mass) {
     particleProperties.push_back(ParticleType{typeID, epsilon, sigma, mass});
   }
 

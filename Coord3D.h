@@ -55,6 +55,14 @@ struct Coord3D {
   }
 
   KOKKOS_INLINE_FUNCTION
+  Coord3D &operator*=(double rhs) {
+    x = x * rhs;
+    y = y * rhs;
+    z = z * rhs;
+    return *this;
+  }
+
+  KOKKOS_INLINE_FUNCTION
   Coord3D &operator+=(const Coord3D &rhs) {
     x = x + rhs.x;
     y = y + rhs.y;
