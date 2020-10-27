@@ -16,12 +16,14 @@ class ParticleContainer {
   unsigned int size;
   Coord3DView positions;
   Coord3DView forces;
+  Coord3DView oldForces;
   Coord3DView velocities;
 
   explicit ParticleContainer(int cubeSideLength) {
     size = cubeSideLength * cubeSideLength * cubeSideLength + 2;
     positions = Coord3DView("positions", size);
     forces = Coord3DView("forces", size);
+    oldForces = Coord3DView ("oldForces", size);
     velocities = Coord3DView("velocities", size);
 
     Kokkos::parallel_for("initializeParticles", size, KOKKOS_LAMBDA(int n) {
@@ -29,7 +31,7 @@ class ParticleContainer {
                              (n / cubeSideLength) % cubeSideLength,
                              n / (cubeSideLength * cubeSideLength));
 
-      forces(n) = velocities(n) = Coord3D();
+      forces(n) = oldForces(n) = velocities(n) = Coord3D();
     });
 
     positions(size - 2) = Coord3D(0.5, 0.5, 2);
