@@ -38,18 +38,18 @@ void ParticleContainer::insertParticle(Particle particle, int index) const {
   auto subOF = Kokkos::subview(oldForces, index);
   auto subV = Kokkos::subview(velocities, index);
 
-  auto subP_h = Kokkos::create_mirror_view(subP);
-  auto subF_h = Kokkos::create_mirror_view(subF);
-  auto subOF_h = Kokkos::create_mirror_view(subOF);
-  auto subV_h = Kokkos::create_mirror_view(subV);
+  auto h_subP = Kokkos::create_mirror_view(subP);
+  auto h_subF = Kokkos::create_mirror_view(subF);
+  auto h_subOF = Kokkos::create_mirror_view(subOF);
+  auto h_subV = Kokkos::create_mirror_view(subV);
 
-  subP_h() = particle.position;
-  subF_h() = particle.force;
-  subOF_h() = particle.oldForce;
-  subV_h() = particle.velocity;
+  h_subP() = particle.position;
+  h_subF() = particle.force;
+  h_subOF() = particle.oldForce;
+  h_subV() = particle.velocity;
 
-  Kokkos::deep_copy(subP, subP_h);
-  Kokkos::deep_copy(subF, subF_h);
-  Kokkos::deep_copy(subOF, subOF_h);
-  Kokkos::deep_copy(subV, subV_h);
+  Kokkos::deep_copy(subP, h_subP);
+  Kokkos::deep_copy(subF, h_subF);
+  Kokkos::deep_copy(subOF, h_subOF);
+  Kokkos::deep_copy(subV, h_subV);
 }

@@ -26,7 +26,7 @@ struct Coord3D {
 
   [[nodiscard]] KOKKOS_INLINE_FUNCTION
   Coord3D distanceTo(const Coord3D &other) const {
-    return Coord3D{x - other.x, y - other.y, z - other.z};
+    return Coord3D(other.x - x, other.y - y, other.z - z);
   }
 
   [[nodiscard]] KOKKOS_INLINE_FUNCTION

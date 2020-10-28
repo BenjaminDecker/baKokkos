@@ -61,12 +61,13 @@ int main(int argc, char *argv[]) {
                              Coord3D force = Coord3D();
                              Kokkos::parallel_reduce(Kokkos::TeamThreadRange(teamMember, container.size),
                                                      [=](int id_2, Coord3D &force) {
+
                                                        if (id_1 == id_2) {
                                                          return;
                                                        }
 
                                                        Coord3D distance =
-                                                           container.positions(id_2).distanceTo(container.positions(id_1));
+                                                           container.positions(id_1).distanceTo(container.positions(id_2));
                                                        double distanceValue = distance.absoluteValue();
                                                        double distanceValuePow6 =
                                                            distanceValue * distanceValue * distanceValue * distanceValue
