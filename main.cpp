@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
 
       //Calculate forces
       Kokkos::parallel_for("calculateForces",
-                           team_policy(container.size, Kokkos::AUTO()),
+                           team_policy(container.size, Kokkos::AUTO),
                            KOKKOS_LAMBDA(const member_type &teamMember) {
                              int id_1 = teamMember.league_rank();
                              Coord3D force = Coord3D();

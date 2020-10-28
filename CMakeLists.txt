@@ -6,5 +6,5 @@ set(CMAKE_CXX_STANDARD 20)
 add_subdirectory(kokkos)
 include_directories(${Kokkos_INCLUDE_DIRS_RET})
 
-add_executable(baKokkos main.cpp ParticleContainer.cpp ParticleContainer.h ParticlePropertiesLibrary.cpp ParticlePropertiesLibrary.h Coord3D.cpp Coord3D.h)
+add_executable(baKokkos main.cpp ParticleContainer.cpp ParticleContainer.h ParticlePropertiesLibrary.cpp ParticlePropertiesLibrary.h Coord3D.cpp Coord3D.h Particle.cpp Particle.h)
 target_link_libraries(baKokkos kokkos)
