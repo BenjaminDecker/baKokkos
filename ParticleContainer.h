@@ -7,7 +7,7 @@
 #include "Coord3D.h"
 #include "Particle.h"
 
-typedef Kokkos::View<Coord3D *> Coord3DView;
+using Coord3DView = Kokkos::View<Coord3D *>;
 
 // Change this to scale the initial distance of the particles (lower means closer together)
 constexpr double scale = 1;
