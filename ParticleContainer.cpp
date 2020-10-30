@@ -4,7 +4,7 @@
 
 #include "ParticleContainer.h"
 ParticleContainer::ParticleContainer(int cubeSideLength) {
-  size = cubeSideLength * cubeSideLength * cubeSideLength + 2;
+  size = cubeSideLength * cubeSideLength * cubeSideLength;
   positions = Coord3DView("positions", size);
   forces = Coord3DView("forces", size);
   oldForces = Coord3DView("oldForces", size);
@@ -15,9 +15,6 @@ ParticleContainer::ParticleContainer(int cubeSideLength) {
                            (n / cubeSideLength) % cubeSideLength,
                            n / (cubeSideLength * cubeSideLength));
   });
-
-  positions(size - 2) = Coord3D(0.5, 0.5, 2);
-  positions(size - 1) = Coord3D(0.5, 0.5, -1);
 
   Kokkos::parallel_for("scalePositions", size, KOKKOS_LAMBDA(int n) {
     positions(n) *= scale;
