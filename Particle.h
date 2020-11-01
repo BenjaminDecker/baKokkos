@@ -8,6 +8,8 @@
 
 /**
  * @brief Used by a ParticleContainer to view and change particle information in device memory from the host space
+ *
+ * @see ParticleContainer
  */
 struct Particle {
   Coord3D position;

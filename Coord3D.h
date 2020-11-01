@@ -12,9 +12,12 @@
 /**
  * @brief A 3D coordinate struct designed to be used inside a Kokkos::View.
  *
+ * The ParticleContainer uses instances of Kokkos::View<Coord3D> to save information about particles.
  * All functions that might be called from inside a Kokkos::parallel_for() or a Kokkos::parallel_reduce() must be
  * annotated with KOKKOS_INLINE_FUNCTION. Structs used as a reducer in a Kokkos::parallel_for need to have volatile
  * and non-volatile versions of the += operator defined.
+ *
+ * @see ParticleContainer
  */
 struct Coord3D {
   double x, y, z;
@@ -112,7 +115,7 @@ std::ostream &operator<<(std::ostream &stream, const Coord3D &obj) {
 
 namespace Kokkos {
 template<>
-/// Required for using Coord3D with Kokkos parallel_reduce
+/// Required to enable using Coord3D with Kokkos parallel_reduce
 struct reduction_identity<Coord3D> {
   KOKKOS_FORCEINLINE_FUNCTION static Coord3D sum() {
     return Coord3D();

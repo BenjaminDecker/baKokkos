@@ -18,6 +18,8 @@ constexpr double scale = 1;
  * All particle information is saved in device space for performance reasons.
  * Data in device memory can be accessed from host space by copying data from device memory to host memory. This is
  * done with the Particle struct.
+ *
+ * @see Particle
  */
 class ParticleContainer {
  public:
