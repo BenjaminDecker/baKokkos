@@ -50,8 +50,8 @@ int main(int argc, char *argv[]) {
             container.velocities(i) * deltaT + container.forces(i) * ((deltaT * deltaT) / (2 * mass));
       });
 
-      typedef Kokkos::TeamPolicy<> team_policy;
-      typedef Kokkos::TeamPolicy<>::member_type member_type;
+      using team_policy = Kokkos::TeamPolicy<>;
+      using member_type = Kokkos::TeamPolicy<>::member_type;
 
       //Calculate forces
       Kokkos::parallel_for("calculateForces",
