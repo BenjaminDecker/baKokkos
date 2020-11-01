@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
   Kokkos::initialize(argc, argv);
   {
 
-    constexpr int iterations = 10000000;
+    constexpr int iterations = 100000;
     constexpr double deltaT = 0.000002;
     constexpr double cubeSideLength = 2;
     constexpr double epsilon = 1;
@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
         container.velocities(i) += (container.forces(i) + container.oldForces(i)) * (deltaT / (2 * mass));
       });
 
-      if (timeStep % 10000 == 0) {
+      if (timeStep % 1000 == 0) {
         writeVTKFile(timeStep, iterations, container);
       }
 
@@ -129,7 +129,7 @@ void writeVTKFile(unsigned int iteration, unsigned int iterationCount, const Par
   vtkFile << "DIMENSIONS 1 1 1" << std::endl;
   vtkFile << "POINTS " << numParticles << " double" << std::endl;
   for (int i = 0; i < numParticles; ++i) {
-    auto &coord = container.positions(i);
+    auto coord = container.getParticle(i).position;
     vtkFile << coord.x << " " << coord.y << " " << coord.z << std::endl;
   }
   vtkFile << std::endl;
@@ -138,7 +138,7 @@ void writeVTKFile(unsigned int iteration, unsigned int iterationCount, const Par
   // print velocities
   vtkFile << "VECTORS velocities double" << std::endl;
   for (int i = 0; i < numParticles; ++i) {
-    auto &coord = container.velocities(i);
+    auto coord = container.getParticle(i).velocity;
     vtkFile << coord.x << " " << coord.y << " " << coord.z << std::endl;
   }
   vtkFile << std::endl;
@@ -146,7 +146,7 @@ void writeVTKFile(unsigned int iteration, unsigned int iterationCount, const Par
   // print Forces
   vtkFile << "VECTORS forces double" << std::endl;
   for (int i = 0; i < numParticles; ++i) {
-    auto &coord = container.forces(i);
+    auto coord = container.getParticle(i).force;
     vtkFile << coord.x << " " << coord.y << " " << coord.z << std::endl;
   }
   vtkFile << std::endl;
