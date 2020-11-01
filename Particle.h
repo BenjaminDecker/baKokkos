@@ -6,6 +6,9 @@
 
 #include "Coord3D.h"
 
+/**
+ * @brief Used by a ParticleContainer to view and change particle information in device memory from the host space
+ */
 struct Particle {
   Coord3D position;
   Coord3D force;
