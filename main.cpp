@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
   Kokkos::initialize(argc, argv);
   {
 
-    constexpr int iterations = 100000;
+    constexpr int iterations = 10000000;
     constexpr double deltaT = 0.000002;
     constexpr double cubeSideLength = 2;
     constexpr double epsilon = 1;
@@ -75,7 +75,8 @@ int main(int argc, char *argv[]) {
                                                        double distanceValuePow13 = distanceValuePow6 * distanceValuePow6 * distanceValue;
 
                                                        // https://www.ableitungsrechner.net/#expr=4%2A%CE%B5%28%28%CF%83%2Fr%29%5E12-%28%CF%83%2Fr%29%5E6%29&diffvar=r
-                                                       double forceValue = (twentyFourEpsilonSigmaPow6 * distanceValuePow6 - fourtyEightEpsilonSigmaPow12) / distanceValuePow13;
+                                                       double forceValue =
+                                                           (twentyFourEpsilonSigmaPow6 * distanceValuePow6 - fourtyEightEpsilonSigmaPow12) / distanceValuePow13;
 
                                                        force += (distance * (forceValue / distanceValue));
                                                      }, force);
@@ -89,7 +90,7 @@ int main(int argc, char *argv[]) {
         container.velocities(i) += (container.forces(i) + container.oldForces(i)) * (deltaT / (2 * mass));
       });
 
-      if (timeStep % 1000 == 0) {
+      if (timeStep % 10000 == 0) {
         writeVTKFile(timeStep, iterations, container);
       }
 
