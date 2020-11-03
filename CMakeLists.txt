@@ -12,8 +12,13 @@ FetchContent_Declare(
 FetchContent_Declare(
         yaml-cpp
         GIT_REPOSITORY "https://github.com/jbeder/yaml-cpp.git"
+        GIT_TAG "yaml-cpp-0.6.3"
 )
-FetchContent_MakeAvailable(kokkos yaml-cpp)
-
-add_executable(baKokkos main.cpp ParticleContainer.cpp ParticleContainer.h ParticlePropertiesLibrary.cpp ParticlePropertiesLibrary.h Coord3D.cpp Coord3D.h Particle.cpp Particle.h YamlParser.cpp YamlParser.h ParticleGroup.cpp ParticleGroup.h)
-target_link_libraries(baKokkos kokkos yaml-cpp)
+FetchContent_Declare(
+        cxxopts
+        GIT_REPOSITORY "https://github.com/jarro2783/cxxopts.git"
+        GIT_TAG "v2.2.1"
+)
+FetchContent_MakeAvailable(kokkos yaml-cpp cxxopts)
+add_executable(baKokkos main.cpp ParticleContainer.cpp ParticleContainer.h ParticlePropertiesLibrary.cpp ParticlePropertiesLibrary.h Coord3D.cpp Coord3D.h Particle.cpp Particle.h YamlParser.cpp YamlParser.h ParticleGroup.cpp ParticleGroup.h Simulation.cpp Simulation.h)
+target_link_libraries(baKokkos kokkos yaml-cpp cxxopts)

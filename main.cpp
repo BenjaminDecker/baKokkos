@@ -6,23 +6,16 @@
 #include "ParticlePropertiesLibrary.h"
 #include "Coord3D.h"
 #include "ParticleContainer.h"
-#include "YamlParser.h"
+#include "Simulation.h"
+
+
 
 void writeVTKFile(unsigned int iteration, unsigned int iterationCount, const ParticleContainer &container);
 
 int main(int argc, char *argv[]) {
   Kokkos::initialize(argc, argv);
   {
-    constexpr int iterations = 1000; /**< Amount of timesteps to simulate */
-    constexpr double deltaT = 0.000002; /**< Length of a timestep of the simulation */
-    constexpr double cubeSideLength = 15;
-    constexpr double epsilon = 1;
-    constexpr double sigma = 1;
-    constexpr double mass = 1;
-
-    const double sigmaPow6 = sigma * sigma * sigma * sigma * sigma * sigma;
-    const double twentyFourEpsilonSigmaPow6 = 24 * epsilon * sigmaPow6;
-    const double fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
+    Simulation simulation = Simulation(argc, argv);
 
     /*
     ParticlePropertiesLibrary particlePropertiesLibrary;
@@ -33,7 +26,7 @@ int main(int argc, char *argv[]) {
     Kokkos::Timer timer1;
 
     //Creates the particle container and initializes a cube of particles
-    ParticleContainer container(cubeSideLength);
+    ParticleContainer container(YamlParser(result["yaml-filename"].as<std::string>()));
     const double time1 = timer1.seconds();
     std::cout << "Finished initializing " << container.size << " particles." << std::endl << "Time: " << time1
               << " seconds" << std::endl << std::endl;
