@@ -9,7 +9,11 @@ FetchContent_Declare(
         GIT_REPOSITORY "https://github.com/kokkos/kokkos"
         GIT_TAG "3.2.00"
 )
-FetchContent_MakeAvailable(kokkos)
+FetchContent_Declare(
+        yaml-cpp
+        GIT_REPOSITORY "https://github.com/jbeder/yaml-cpp.git"
+)
+FetchContent_MakeAvailable(kokkos yaml-cpp)
 
-add_executable(baKokkos main.cpp ParticleContainer.cpp ParticleContainer.h ParticlePropertiesLibrary.cpp ParticlePropertiesLibrary.h Coord3D.cpp Coord3D.h Particle.cpp Particle.h)
-target_link_libraries(baKokkos kokkos)
+add_executable(baKokkos main.cpp ParticleContainer.cpp ParticleContainer.h ParticlePropertiesLibrary.cpp ParticlePropertiesLibrary.h Coord3D.cpp Coord3D.h Particle.cpp Particle.h YamlParser.cpp YamlParser.h ParticleGroup.cpp ParticleGroup.h)
+target_link_libraries(baKokkos kokkos yaml-cpp)

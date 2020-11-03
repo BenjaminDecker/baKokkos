@@ -6,16 +6,16 @@
 #include "ParticlePropertiesLibrary.h"
 #include "Coord3D.h"
 #include "ParticleContainer.h"
+#include "YamlParser.h"
 
 void writeVTKFile(unsigned int iteration, unsigned int iterationCount, const ParticleContainer &container);
 
 int main(int argc, char *argv[]) {
   Kokkos::initialize(argc, argv);
   {
-
-    constexpr int iterations = 100000;
-    constexpr double deltaT = 0.000002;
-    constexpr double cubeSideLength = 2;
+    constexpr int iterations = 1000; /**< Amount of timesteps to simulate */
+    constexpr double deltaT = 0.000002; /**< Length of a timestep of the simulation */
+    constexpr double cubeSideLength = 15;
     constexpr double epsilon = 1;
     constexpr double sigma = 1;
     constexpr double mass = 1;
@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
 
     //Creates the particle container and initializes a cube of particles
     ParticleContainer container(cubeSideLength);
-    double time1 = timer1.seconds();
+    const double time1 = timer1.seconds();
     std::cout << "Finished initializing " << container.size << " particles." << std::endl << "Time: " << time1
               << " seconds" << std::endl << std::endl;
 
@@ -57,10 +57,10 @@ int main(int argc, char *argv[]) {
       Kokkos::parallel_for("calculateForces",
                            team_policy(container.size, Kokkos::AUTO),
                            KOKKOS_LAMBDA(const member_type &teamMember) {
-                             int id_1 = teamMember.league_rank();
+                             const int id_1 = teamMember.league_rank();
                              Coord3D force = Coord3D();
                              Kokkos::parallel_reduce(Kokkos::TeamThreadRange(teamMember, container.size),
-                                                     [=](int id_2, Coord3D &force) {
+                                                     [=](const int id_2, Coord3D &force) {
 
                                                        if (id_1 == id_2) {
                                                          return;
@@ -68,14 +68,17 @@ int main(int argc, char *argv[]) {
 
                                                        Coord3D distance =
                                                            container.positions(id_1).distanceTo(container.positions(id_2));
-                                                       double distanceValue = distance.absoluteValue();
-                                                       double distanceValuePow6 =
+                                                       const double distanceValue = distance.absoluteValue();
+                                                       const double distanceValuePow6 =
                                                            distanceValue * distanceValue * distanceValue * distanceValue
                                                                * distanceValue * distanceValue;
-                                                       double distanceValuePow13 = distanceValuePow6 * distanceValuePow6 * distanceValue;
+                                                       const double distanceValuePow13 =
+                                                           distanceValuePow6 * distanceValuePow6 * distanceValue;
 
                                                        // https://www.ableitungsrechner.net/#expr=4%2A%CE%B5%28%28%CF%83%2Fr%29%5E12-%28%CF%83%2Fr%29%5E6%29&diffvar=r
-                                                       double forceValue = (twentyFourEpsilonSigmaPow6 * distanceValuePow6 - fourtyEightEpsilonSigmaPow12) / distanceValuePow13;
+                                                       const double forceValue =
+                                                           (twentyFourEpsilonSigmaPow6 * distanceValuePow6
+                                                               - fourtyEightEpsilonSigmaPow12) / distanceValuePow13;
 
                                                        force += (distance * (forceValue / distanceValue));
                                                      }, force);
@@ -89,8 +92,11 @@ int main(int argc, char *argv[]) {
         container.velocities(i) += (container.forces(i) + container.oldForces(i)) * (deltaT / (2 * mass));
       });
 
-      if (timeStep % 1000 == 0) {
+      if (timeStep % 10000 == 0) {
         writeVTKFile(timeStep, iterations, container);
+      }
+      if (timeStep % 100 == 0) {
+        std::cout << timeStep << std::endl;
       }
 
 //      //Test prints
@@ -99,7 +105,7 @@ int main(int argc, char *argv[]) {
 //      }
 //      std::cout << std::endl;
     }
-    double time2 = timer2.seconds();
+    const double time2 = timer2.seconds();
     std::cout << "Finished simulating" << std::endl << "Time: " << time2 << " seconds" << std::endl << std::endl;
 
   }
@@ -155,7 +161,7 @@ void writeVTKFile(unsigned int iteration, unsigned int iterationCount, const Par
   vtkFile << "SCALARS typeIds int" << std::endl;
   vtkFile << "LOOKUP_TABLE default" << std::endl;
   for (int i = 0; i < numParticles; ++i) {
-    vtkFile << 0 << std::endl;
+    vtkFile << container.getParticle(i).typeID << std::endl;
   }
   vtkFile << std::endl;
 

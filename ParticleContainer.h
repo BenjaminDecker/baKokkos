@@ -6,11 +6,9 @@
 
 #include "Coord3D.h"
 #include "Particle.h"
+#include "YamlParser.h"
 
 using Coord3DView = Kokkos::View<Coord3D *>;
-
-// Change this to scale the initial distance of the particles (lower means closer together)
-constexpr double scale = 1;
 
 /**
  * @brief Manages particle information in device space and offers reading and writing to it from the host space
@@ -24,6 +22,7 @@ constexpr double scale = 1;
 class ParticleContainer {
  public:
   unsigned int size;
+  Kokkos::View<int *> typeIDs;
   Coord3DView positions;
   Coord3DView forces;
   Coord3DView oldForces;
@@ -36,6 +35,7 @@ class ParticleContainer {
    * is cubeSideLength * cubeSideLength * cubeSideLength.
    */
   explicit ParticleContainer(int cubeSideLength);
+  explicit ParticleContainer(YamlParser parser);
 
   /**
    * Creates a Particle with information from the device memory at the specified index.
