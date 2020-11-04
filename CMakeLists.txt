@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 20)
 include(FetchContent)
 FetchContent_Declare(
         kokkos
-        GIT_REPOSITORY "https://github.com/kokkos/kokkos"
+        GIT_REPOSITORY "https://github.com/kokkos/kokkos.git"
         GIT_TAG "3.2.00"
 )
 FetchContent_Declare(

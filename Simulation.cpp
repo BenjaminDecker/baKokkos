@@ -3,30 +3,10 @@
 //
 
 #include "Simulation.h"
-Simulation::Simulation(int argc, char *argv[]) {
-  cxxopts::Options options("baKokkos");
-  options.add_options("Non-mandatory")
-      ("help", "Display this message")
-      ("iterations", "Number of iterations to simulate", cxxopts::value<int>()->default_value("100000"))
-      ("deltaT", "Length of one time step of the simulation",cxxopts::value<double>()->default_value("0.000002"))
-      ("vtk-filename", "Basename for all VTK output files", cxxopts::value<std::string>())
-      ("vtk-write-frequency", "Number of iterations after which a VTK file is written", cxxopts::value<int>()->default_value("10000"))
-      ("yaml-filename", "Path to a .yaml input file", cxxopts::value<std::string>());
-  auto result = options.parse(argc, argv);
-  iterations = result["iterations"].as<int>();
-  deltaT = result["deltaT"].as<double>();
-  if (result.count("vtk-filename") > 0) {
-    vtkOutput = true;
-    vtkFileName = result["vtk-filename"].as<std::string>();
-    vtkWriteFrequency = result["vtk-write-frequency"].as<int>();
-  }
-  if (result.count("yaml-filename") > 0) {
-    yamlInput = true;
-    yamlFileName = result["yaml-filename"].as<std::string>();
-  }
+Simulation::Simulation(const SimulationConfig& config) : config(config) {
   std::cout << "Initializing particles..." << std::endl;
   Kokkos::Timer timer;
-  container = ParticleContainer(YamlParser(yamlFileName));
+  container = ParticleContainer(YamlParser(config.yamlFileName));
   const double time = timer.seconds();
   std::cout << "Finished initializing " << container.size << " particles." << std::endl << "Time: " << time
             << " seconds" << std::endl << std::endl;
@@ -38,12 +18,12 @@ void Simulation::start() const {
   Kokkos::Timer timer;
 
   //Iteration loop
-  for (int iteration = 0; iteration < iterations; ++iteration) {
+  for (int iteration = 0; iteration < config.iterations; ++iteration) {
 
     //Calculate positions
     Kokkos::parallel_for("calculatePositions", container.size, KOKKOS_LAMBDA(int i) {
       container.positions(i) +=
-          container.velocities(i) * deltaT + container.forces(i) * ((deltaT * deltaT) / (2 * mass));
+          container.velocities(i) * config.deltaT + container.forces(i) * ((config.deltaT * config.deltaT) / (2 * mass));
     });
 
     using team_policy = Kokkos::TeamPolicy<>;
@@ -85,11 +65,11 @@ void Simulation::start() const {
 
     //Calculate the new velocities
     Kokkos::parallel_for("calculateVelocities", container.size, KOKKOS_LAMBDA(int i) {
-      container.velocities(i) += (container.forces(i) + container.oldForces(i)) * (deltaT / (2 * mass));
+      container.velocities(i) += (container.forces(i) + container.oldForces(i)) * (config.deltaT / (2 * mass));
     });
 
-    if (vtkOutput) {
-      if (iteration % vtkWriteFrequency == 0) {
+    if (config.vtkOutput) {
+      if (iteration % config.vtkWriteFrequency == 0) {
         writeVTKFile(iteration);
       }
     }
@@ -106,7 +86,7 @@ void Simulation::start() const {
 void Simulation::writeVTKFile(int iteration) const {
   std::string fileBaseName("baKokkos");
   std::ostringstream strstr;
-  auto maxNumDigits = std::to_string(iterations).length();
+  auto maxNumDigits = std::to_string(config.iterations).length();
   unsigned int numParticles = container.size;
   strstr << fileBaseName << "_" << std::setfill('0') << std::setw(maxNumDigits) << iteration << ".vtk";
   std::ofstream vtkFile;

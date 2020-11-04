@@ -27,7 +27,7 @@ struct ParticleGroup {
         particleMass(particleMass) {}
 
         /**
-         * The particleGroup creates particles based on its parameters and appends them to the given vector.
+         * Creates particles based on member parameters and appends them to the given vector
          */
   virtual void getParticles(std::vector<Particle> &particles) const  = 0;
 };

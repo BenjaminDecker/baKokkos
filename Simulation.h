@@ -6,23 +6,42 @@
 
 #include <iomanip>
 #include <fstream>
-#include <cxxopts.hpp>
+#include <utility>
 #include "ParticleContainer.h"
+
+struct SimulationConfig {
+  const int iterations; /**< Number of iterations to simulate */
+  const double deltaT; /**< Length of one time step of the simulation */
+
+  const bool vtkOutput = false; /**< Indicates if the user specified a vtk file name as output */
+  const std::string vtkFileName; /**< Basename for all VTK output files */
+
+  const int vtkWriteFrequency;
+
+  const bool yamlInput = false; /**< Indicates if the user specified a yaml file path as input */
+  const std::string yamlFileName; /**< Path to the.yaml file used as input */
+
+  SimulationConfig(int iterations,
+                   double delta_t,
+                   bool vtk_output,
+                   std::string vtk_file_name,
+                   int vtk_write_frequency,
+                   bool yaml_input,
+                   std::string yaml_file_name)
+      : iterations(iterations),
+        deltaT(delta_t),
+        vtkOutput(vtk_output),
+        vtkFileName(std::move(vtk_file_name)),
+        vtkWriteFrequency(vtk_write_frequency),
+        yamlInput(yaml_input),
+        yamlFileName(std::move(yaml_file_name)) {}
+};
 
 class Simulation {
  public:
-  int iterations; /**< Number of iterations to simulate */
-  double deltaT; /**< Length of one time step of the simulation */
+  ParticleContainer container; /**< Holds and manages particle data in device memory */
 
-  bool vtkOutput = false; /**< Indicates if the user specified a vtk file name as output */
-  std::string vtkFileName; /**< Basename for all VTK output files */
-
-  int vtkWriteFrequency;
-
-  bool yamlInput = false; /**< Indicates if the user specified a yaml file path as input */
-  std::string yamlFileName; /**< Path to the.yaml file used as input */
-
-  ParticleContainer container; /**< Holds and manages particle data in device memory  */
+  const SimulationConfig config;
 
   const double epsilon = 1;
   const double sigma = 1;
@@ -33,12 +52,12 @@ class Simulation {
   const double fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
 
   /**
-   * The simulation is initialized by parsing the command line input for parameters.
+   * The simulation is initialized by parsing the command line input for parameters
    */
-  Simulation(int argc, char *argv[]);
+  Simulation(const SimulationConfig& config);
 
   /**
-   * Starts the simulation.
+   * Starts the simulation
    */
   void start() const;
 
