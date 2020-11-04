@@ -4,16 +4,15 @@
 
 #pragma once
 
-#include <math.h>
 #include "Particle.h"
 
 struct ParticleGroup {
-  int typeID;
-  double spacing;
-  Coord3D velocity;
-  double particleEpsilon;
-  double particleSigma;
-  double particleMass;
+  const int typeID;
+  const double spacing;
+  const Coord3D velocity;
+  const double particleEpsilon;
+  const double particleSigma;
+  const double particleMass;
   ParticleGroup(int typeID,
                 double spacing,
                 const Coord3D velocity,
@@ -27,12 +26,15 @@ struct ParticleGroup {
         particleSigma(particleSigma),
         particleMass(particleMass) {}
 
-  virtual void getParticles(std::vector<Particle> &particles) = 0;
+        /**
+         * The particleGroup creates particles based on its parameters and appends them to the given vector.
+         */
+  virtual void getParticles(std::vector<Particle> &particles) const  = 0;
 };
 
 struct ParticleCuboid : public ParticleGroup {
-  Coord3D bottomLeftCorner;
-  Coord3D particlesPerDimension;
+  const Coord3D bottomLeftCorner;
+  const Coord3D particlesPerDimension;
   ParticleCuboid(int typeID,
                  double spacing,
                  Coord3D velocity,
@@ -45,7 +47,7 @@ struct ParticleCuboid : public ParticleGroup {
         bottomLeftCorner(bottomLeftCorner),
         particlesPerDimension(particlesPerDimension) {}
 
-  void getParticles(std::vector<Particle> &particles) override {
+  void getParticles(std::vector<Particle> &particles) const override {
     for (int x = 0; x < particlesPerDimension.x; ++x) {
       for (int y = 0; y < particlesPerDimension.y; ++y) {
         for (int z = 0; z < particlesPerDimension.z; ++z) {
@@ -60,8 +62,8 @@ struct ParticleCuboid : public ParticleGroup {
 };
 
 struct ParticleSphere : public ParticleGroup {
-  Coord3D center;
-  double radius;
+  const Coord3D center;
+  const double radius;
   ParticleSphere(int typeID,
                  double spacing,
                  Coord3D velocity,
@@ -82,10 +84,8 @@ struct ParticleSphere : public ParticleGroup {
    * The algorithm takes the total amount of particles to be placed on the sphere and distributes them equally.
    * Each particle will roughly have a distance of spacing to the next particle, if the particle density is set at
    * 1/(sqrt(spacing)). The total amount of particles on one sphere shell is therefore: area * 1/(sqrt(spacing)).
-   *
-   * @param The particle positions are appended to particles
    */
-  void getParticles(std::vector<Particle> &particles) override {
+  void getParticles(std::vector<Particle> &particles) const override {
     particles.emplace_back(typeID, center, velocity);
 
     const double gr = (sqrt(5.0) + 1.0) / 2.0;  // golden ratio = 1.6180339887498948482

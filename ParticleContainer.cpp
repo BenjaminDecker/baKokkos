@@ -18,7 +18,7 @@ ParticleContainer::ParticleContainer(int cubeSideLength) {
   });
 }
 
-ParticleContainer::ParticleContainer(YamlParser parser) {
+ParticleContainer::ParticleContainer(const YamlParser &parser) {
   std::vector<std::vector<Particle>> cuboids;
   std::vector<std::vector<Particle>> spheres;
 
@@ -87,7 +87,7 @@ Particle ParticleContainer::getParticle(int index) const {
   return Particle(typeID, position, force, velocity, oldForce);
 }
 
-void ParticleContainer::insertParticle(Particle particle, int index) const {
+void ParticleContainer::insertParticle(const Particle &particle, int index) const {
   auto subP = Kokkos::subview(positions, index);
   auto subF = Kokkos::subview(forces, index);
   auto subOF = Kokkos::subview(oldForces, index);

@@ -6,7 +6,6 @@
 
 #include <yaml-cpp/yaml.h>
 #include "ParticleGroup.h"
-#include "Particle.h"
 
 class YamlParser {
  public:

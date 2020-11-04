@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include "Coord3D.h"
-#include "Particle.h"
 #include "YamlParser.h"
 
 using Coord3DView = Kokkos::View<Coord3D *>;
@@ -31,19 +29,25 @@ class ParticleContainer {
   /**
    * @brief Initializes a cube of particles with cubeSideLength side length.
    *
-   * Particles are placed 1 unit length apart from one another. The total amount of particles initialized by the container
-   * is cubeSideLength * cubeSideLength * cubeSideLength.
+   * Particles are placed 1 unit length apart from one another. The total amount of particles initialized by the
+   * container is cubeSideLength * cubeSideLength * cubeSideLength.
    */
   explicit ParticleContainer(int cubeSideLength);
-  explicit ParticleContainer(YamlParser parser);
 
   /**
-   * Creates a Particle with information from the device memory at the specified index.
+   * @brief Initialises particles
+   * @param parser stores particle information from a .yaml file
+   */
+  explicit ParticleContainer(const YamlParser &parser);
+  ParticleContainer() = default;
+
+  /**
+   * Creates a Particle with information from device memory at the specified index.
    */
   [[nodiscard]] Particle getParticle(int index) const;
 
   /**
-   * Inserts the information stored in a Particle into the device memory at the specified index.
+   * Inserts the information stored in a Particle into device memory at the specified index.
    */
-  void insertParticle(Particle particle, int index) const;
+  void insertParticle(const Particle &particle, int index) const;
 };
