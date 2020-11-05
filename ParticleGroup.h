@@ -118,10 +118,6 @@ struct ParticleSphere : public ParticleGroup {
         const double lat = asin(-1.0 + 2.0 * double(k) / (particlesOnShell + 1));
         const double lon = ga * k;
 
-        const double x = cos(lon) * cos(lat) * r + center.x;
-        const double y = sin(lon) * cos(lat) * r + center.y;
-        const double z = sin(lat) * r + center.z;
-
         Coord3D position = Coord3D(cos(lon) * cos(lat) * r + center.x,
                                    sin(lon) * cos(lat) * r + center.y,
                                    sin(lat) * r + center.z);
