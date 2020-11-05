@@ -6,13 +6,21 @@
 
 #include "Particle.h"
 
+/**
+ * @brief Superclass for particle groups.
+ *
+ * Each particle group describes a layout of particles. The groups represent an efficient way to store
+ * particle position, velocity and type information before initializing the simulation.
+ * All particle groups share some common properties, which are stored in superclass variables.
+ */
 struct ParticleGroup {
-  const int typeID;
-  const double spacing;
-  const Coord3D velocity;
-  const double particleEpsilon;
-  const double particleSigma;
-  const double particleMass;
+  const int typeID; /**< Type identifier for looking up further particle properties */
+  const double spacing; /**< Describes particle density. Smaller values mean that particles are closer together. */
+  const Coord3D velocity; /**< Starting velocity vector of all particles of the group */
+  const double particleEpsilon; /**< Epsilon property of all particles of the group */
+  const double particleSigma; /**< Sigma property of all particles of the group */
+  const double particleMass; /**< Mass property of all particles of the group */
+
   ParticleGroup(int typeID,
                 double spacing,
                 const Coord3D velocity,
@@ -26,15 +34,20 @@ struct ParticleGroup {
         particleSigma(particleSigma),
         particleMass(particleMass) {}
 
-        /**
-         * Creates particles based on member parameters and appends them to the given vector
-         */
-  virtual void getParticles(std::vector<Particle> &particles) const  = 0;
+  /**
+   * Creates particles based on the group parameters and appends them to the given vector
+   */
+  virtual void getParticles(std::vector<Particle> &particles) const = 0;
 };
 
+/**
+ * @brief Represents a cuboid structure made up of evenly placed particles in a grid layout.
+ */
 struct ParticleCuboid : public ParticleGroup {
-  const Coord3D bottomLeftCorner;
-  const Coord3D particlesPerDimension;
+  const Coord3D bottomLeftCorner; /**< position of the bottom left corner of the cuboid */
+  const Coord3D
+      particlesPerDimension; /**< Number of particles per dimension. Together with the spacing properties, it desctibes the cuboid sidelengths */
+
   ParticleCuboid(int typeID,
                  double spacing,
                  Coord3D velocity,
@@ -47,6 +60,9 @@ struct ParticleCuboid : public ParticleGroup {
         bottomLeftCorner(bottomLeftCorner),
         particlesPerDimension(particlesPerDimension) {}
 
+  /**
+   * Places particles in a cuboid grid with dimensions based on the particlesPerDimension and the spacing property.
+   */
   void getParticles(std::vector<Particle> &particles) const override {
     for (int x = 0; x < particlesPerDimension.x; ++x) {
       for (int y = 0; y < particlesPerDimension.y; ++y) {
@@ -61,6 +77,10 @@ struct ParticleCuboid : public ParticleGroup {
   }
 };
 
+
+/**
+ * Represents a sphere of particles
+ */
 struct ParticleSphere : public ParticleGroup {
   const Coord3D center;
   const double radius;
