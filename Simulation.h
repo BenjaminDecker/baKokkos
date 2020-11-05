@@ -61,19 +61,14 @@ class Simulation {
   const double twentyFourEpsilonSigmaPow6 = 24 * epsilon * sigmaPow6;
   const double fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
 
-  /**
-   * The simulation is initialized by parsing the command line input for parameters
-   */
+  /// The simulation is initialized by parsing the command line input for parameters
   Simulation(const SimulationConfig& config);
 
-  /**
-   * Starts the simulation
-   */
+  /// Starts the simulation
   void start() const;
 
   /**
    * Writes a .vtk file about the current state of the simulation
-   *
    * @param Current iteration
    */
   void writeVTKFile(int iteration) const;

@@ -34,9 +34,7 @@ struct ParticleGroup {
         particleSigma(particleSigma),
         particleMass(particleMass) {}
 
-  /**
-   * Creates particles based on the group parameters and appends them to the given vector
-   */
+  /// Creates particles based on the group parameters and appends them to the given vector
   virtual void getParticles(std::vector<Particle> &particles) const = 0;
 };
 
@@ -60,9 +58,7 @@ struct ParticleCuboid : public ParticleGroup {
         bottomLeftCorner(bottomLeftCorner),
         particlesPerDimension(particlesPerDimension) {}
 
-  /**
-   * Places particles in a cuboid grid with dimensions based on the particlesPerDimension and the spacing property.
-   */
+  /// Places particles in a cuboid grid with dimensions based on the particlesPerDimension and the spacing property.
   void getParticles(std::vector<Particle> &particles) const override {
     for (int x = 0; x < particlesPerDimension.x; ++x) {
       for (int y = 0; y < particlesPerDimension.y; ++y) {
@@ -78,9 +74,7 @@ struct ParticleCuboid : public ParticleGroup {
 };
 
 
-/**
- * Represents a sphere of particles
- */
+/// Represents a sphere of particles
 struct ParticleSphere : public ParticleGroup {
   const Coord3D center;
   const double radius;

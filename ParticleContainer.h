@@ -43,13 +43,9 @@ class ParticleContainer {
   explicit ParticleContainer(const YamlParser &parser);
   ParticleContainer() = default;
 
-  /**
-   * Creates a Particle with information from device memory at the specified index.
-   */
+  /// Creates a Particle with information from device memory at the specified index.
   [[nodiscard]] Particle getParticle(int index) const;
 
-  /**
-   * Inserts the information stored in a Particle into device memory at the specified index.
-   */
+  /// Inserts the information stored in a Particle into device memory at the specified index.
   void insertParticle(const Particle &particle, int index) const;
 };
