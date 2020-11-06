@@ -48,6 +48,9 @@ struct SimulationConfig {
  */
 class Simulation {
  public:
+  enum DataStructure {none, linkedCells}; /**< Possible data structures to store and iterate over particles */
+  DataStructure dataStructure; /**< Represents which data structure is used to store and iterate over particles */
+
   ParticleContainer container; /**< Stores and manages particle data in device memory */
 
   const SimulationConfig config; /**< Stores configuration information for the simulation */
