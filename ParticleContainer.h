@@ -29,14 +29,6 @@ class ParticleContainer {
   Coord3DView velocities; /**< Array of 3-dimensional velocity vectors */
 
   /**
-   * @brief Initializes a cube of particles with cubeSideLength side length.
-   *
-   * Particles are placed 1 unit length apart from one another. The total amount of particles initialized by the
-   * container is cubeSideLength * cubeSideLength * cubeSideLength.
-   */
-  explicit ParticleContainer(int cubeSideLength);
-
-  /**
    * @brief Initialises particles
    * @param parser stores particle information from a .yaml file
    */

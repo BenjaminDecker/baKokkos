@@ -3,20 +3,6 @@
 //
 
 #include "ParticleContainer.h"
-ParticleContainer::ParticleContainer(int cubeSideLength) {
-  size = cubeSideLength * cubeSideLength * cubeSideLength;
-  typeIDs = Kokkos::View<int *>("typeIDs", size);
-  positions = Coord3DView("positions", size);
-  forces = Coord3DView("forces", size);
-  oldForces = Coord3DView("oldForces", size);
-  velocities = Coord3DView("velocities", size);
-
-  Kokkos::parallel_for("initializeParticles", size, KOKKOS_LAMBDA(int n) {
-    positions(n) = Coord3D(n % cubeSideLength,
-                           (n / cubeSideLength) % cubeSideLength,
-                           n / (cubeSideLength * cubeSideLength));
-  });
-}
 
 ParticleContainer::ParticleContainer(const YamlParser &parser) {
   std::vector<std::vector<Particle>> cuboids;
