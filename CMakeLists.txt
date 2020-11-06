@@ -22,3 +22,5 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(kokkos yaml-cpp cxxopts)
 add_executable(baKokkos main.cpp ParticleContainer.cpp ParticleContainer.h ParticlePropertiesLibrary.cpp ParticlePropertiesLibrary.h Coord3D.cpp Coord3D.h Particle.cpp Particle.h YamlParser.cpp YamlParser.h ParticleGroup.cpp ParticleGroup.h Simulation.cpp Simulation.h)
 target_link_libraries(baKokkos kokkos yaml-cpp cxxopts)
+
+include(doxygen.cmake)
