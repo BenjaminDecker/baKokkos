@@ -42,13 +42,12 @@ struct SimulationConfig {
         yamlFileName(std::move(yaml_file_name)) {}
 };
 
-
 /**
  * @brief This class controls the simulation
  */
 class Simulation {
  public:
-  enum DataStructure {none, linkedCells}; /**< Possible data structures to store and iterate over particles */
+  enum DataStructure { none, linkedCells }; /**< Possible data structures to store and iterate over particles */
   DataStructure dataStructure; /**< Represents which data structure is used to store and iterate over particles */
 
   ParticleContainer container; /**< Stores and manages particle data in device memory */
@@ -65,7 +64,7 @@ class Simulation {
   const double fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
 
   /// The simulation is initialized by parsing the command line input for parameters
-  Simulation(const SimulationConfig& config);
+  Simulation(const SimulationConfig &config);
 
   /// Starts the simulation
   void start() const;

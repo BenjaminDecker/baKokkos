@@ -73,7 +73,6 @@ struct ParticleCuboid : public ParticleGroup {
   }
 };
 
-
 /// Represents a sphere of particles
 struct ParticleSphere : public ParticleGroup {
   const Coord3D center;

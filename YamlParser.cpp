@@ -11,7 +11,9 @@ YamlParser::YamlParser(const std::string &fileName) {
        objectIterator != objects.end();
        ++objectIterator) {
     if (objectIterator->first.as<std::string>() == "CubeGrid") {
-      for (auto cuboidIterator = objectIterator->second.begin(); cuboidIterator != objectIterator->second.end(); ++cuboidIterator) {
+      for (auto cuboidIterator = objectIterator->second.begin();
+           cuboidIterator != objectIterator->second.end();
+           ++cuboidIterator) {
         auto cuboid = cuboidIterator->second;
         auto typeID = cuboid["particle-type"].as<int>();
         auto spacing = cuboid["particle-spacing"].as<double>();
@@ -44,7 +46,9 @@ YamlParser::YamlParser(const std::string &fileName) {
     }
 
     if (objectIterator->first.as<std::string>() == "Sphere") {
-      for (auto sphereIterator = objectIterator->second.begin(); sphereIterator != objectIterator->second.end(); ++sphereIterator) {
+      for (auto sphereIterator = objectIterator->second.begin();
+           sphereIterator != objectIterator->second.end();
+           ++sphereIterator) {
         auto sphere = sphereIterator->second;
         auto typeID = sphere["particle-type"].as<int>();
         auto spacing = sphere["particle-spacing"].as<double>();
