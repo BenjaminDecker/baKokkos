@@ -9,7 +9,7 @@
 #include <spdlog/spdlog.h>
 #include "Coord3D.h"
 #include "YamlParser.h"
-#include "ParticleContainer.h"
+#include "DirectSumParticleContainer.h"
 
 /**
  * @brief This struct stores configuration information for the simulation. It is needed to create a Simulation object.
@@ -54,7 +54,7 @@ struct SimulationConfig {
  */
 class Simulation {
  public:
-  ParticleContainer container; /**< Stores and manages particle data in device memory */
+  DirectSumParticleContainer container; /**< Stores and manages particle data in device memory */
 
   const SimulationConfig config; /**< Stores configuration information for the simulation */
 

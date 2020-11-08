@@ -6,7 +6,7 @@
 Simulation::Simulation(const SimulationConfig &config) : config(config) {
   spdlog::info("Initializing particles...");
   Kokkos::Timer timer;
-  container = ParticleContainer(YamlParser(config.yamlFileName));
+  container = DirectSumParticleContainer(YamlParser(config.yamlFileName));
   const double time = timer.seconds();
   spdlog::info("Finished initializing " + std::to_string(container.size) + " particles. Time: "
                    + std::to_string(time) + " seconds.");
