@@ -3,7 +3,7 @@
 //
 
 #pragma once
-#include "Particle.h"
+#include "../Helper/Particle.h"
 
 /**
  * @brief Manages particle information in device memory and offers reading and writing to it from the host space.

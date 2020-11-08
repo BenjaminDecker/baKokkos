@@ -19,6 +19,10 @@ void Simulation::start() const {
   //Iteration loop
   for (int iteration = 0; iteration < config.iterations; ++iteration) {
 
+    if (iteration % 1000 == 0) {
+      spdlog::info("Iteration: {:0" + std::to_string(std::to_string(config.iterations).length()) + "d}", iteration);
+    }
+
     //Calculate positions
     Kokkos::parallel_for("calculatePositions", container.size, KOKKOS_LAMBDA(int i) {
       container.positions(i) +=
@@ -72,10 +76,6 @@ void Simulation::start() const {
       if (iteration % config.vtkWriteFrequency == 0) {
         writeVTKFile(iteration);
       }
-    }
-
-    if (iteration % 1000 == 0) {
-      spdlog::info("Iteration: {:0" + std::to_string(std::to_string(config.iterations).length()) + "d}", iteration);
     }
   }
 

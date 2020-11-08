@@ -6,10 +6,10 @@
 
 #include <Kokkos_Core.hpp>
 #include <vector>
-#include "ParticleContainer.h"
-#include "Coord3D.h"
-#include "Particle.h"
-#include "YamlParser.h"
+#include "../ParticleContainer.h"
+#include "../../Helper/Coord3D.h"
+#include "../../Helper/Particle.h"
+#include "../../Yaml/YamlParser.h"
 
 using Coord3DView = Kokkos::View<Coord3D *>;
 
