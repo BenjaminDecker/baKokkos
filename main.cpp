@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
       Simulation simulation = Simulation(config);
       simulation.start();
     }
-    Kokkos::finalize();
   }
+  Kokkos::finalize();
   return 0;
 }
