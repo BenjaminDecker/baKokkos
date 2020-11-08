@@ -15,6 +15,8 @@
  * @see Simulation
  */
 struct SimulationConfig {
+  enum ContainerStructure { DirectSum, LinkedCells }
+      containerStructure; /**< Represents which container structure is used to store and iterate over particles */
   const int iterations; /**< Number of iterations to simulate */
   const double deltaT; /**< Length of one time step of the simulation */
 
@@ -26,14 +28,17 @@ struct SimulationConfig {
   const bool yamlInput = false; /**< Indicates if the user specified a yaml file path as input */
   const std::string yamlFileName; /**< Path to the.yaml file used as input */
 
-  SimulationConfig(int iterations,
+  SimulationConfig(ContainerStructure containerStructure,
+                   int iterations,
                    double delta_t,
+                   double cutoff,
                    bool vtk_output,
                    std::string vtk_file_name,
                    int vtk_write_frequency,
                    bool yaml_input,
                    std::string yaml_file_name)
-      : iterations(iterations),
+      : containerStructure(containerStructure),
+        iterations(iterations),
         deltaT(delta_t),
         vtkOutput(vtk_output),
         vtkFileName(std::move(vtk_file_name)),
@@ -47,9 +52,6 @@ struct SimulationConfig {
  */
 class Simulation {
  public:
-  enum DataStructure { none, linkedCells }; /**< Possible data structures to store and iterate over particles */
-  DataStructure dataStructure; /**< Represents which data structure is used to store and iterate over particles */
-
   ParticleContainer container; /**< Stores and manages particle data in device memory */
 
   const SimulationConfig config; /**< Stores configuration information for the simulation */
@@ -64,7 +66,7 @@ class Simulation {
   const double fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
 
   /// The simulation is initialized by parsing the command line input for parameters
-  Simulation(const SimulationConfig &config);
+  explicit Simulation(const SimulationConfig &config);
 
   /// Starts the simulation
   void start() const;

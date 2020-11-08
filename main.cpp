@@ -7,7 +7,11 @@ int main(int argc, char *argv[]) {
     cxxopts::Options options("baKokkos");
     options.add_options("Non-mandatory")
         ("help", "Display this message")
+        ("containerStructure",
+         "Container structure that is used to store and iterate over particles. Possible values: (DirectSum LinkedCells).",
+         cxxopts::value<std::string>()->default_value("DirectSum"))
         ("iterations", "Number of iterations to simulate", cxxopts::value<int>()->default_value("100000"))
+        ("cutoff", "Lennard-Jones force cutoff", cxxopts::value<double>()->default_value("3"))
         ("deltaT", "Length of one time step of the simulation", cxxopts::value<double>()->default_value("0.000002"))
         ("vtk-filename", "Basename for all VTK output files", cxxopts::value<std::string>())
         ("vtk-write-frequency",
@@ -19,16 +23,31 @@ int main(int argc, char *argv[]) {
     if (result.count("help") > 0) {
       std::cout << options.help() << std::endl;
     } else {
+      SimulationConfig::ContainerStructure containerStructure;
       int iterations;
       double deltaT;
+      double cutoff;
       bool vtkOutput = false;
       std::string vtkFileName = std::string();
       int vtkWriteFrequency;
       bool yamlInput = false;
       std::string yamlFileName = std::string();
 
+      std::string containerStructureString = result["containerStructure"].as<std::string>();
+      if (containerStructureString == "DirectSum") {
+        containerStructure = SimulationConfig::ContainerStructure::DirectSum;
+      } else if (containerStructureString == "LinkedCells") {
+        containerStructure = SimulationConfig::ContainerStructure::LinkedCells;
+      } else {
+        std::cout << '"' << containerStructureString << '"'
+                  << " is not a valid option for the field --containerStructure. Using "
+                  << '"' << "DirectSum" << '"' << " instead." << std::endl;
+        containerStructure = SimulationConfig::ContainerStructure::DirectSum;
+      }
+
       iterations = result["iterations"].as<int>();
       deltaT = result["deltaT"].as<double>();
+      cutoff = result["cutoff"].as<double>();
       if (result.count("vtk-filename") > 0) {
         vtkOutput = true;
         vtkFileName = result["vtk-filename"].as<std::string>();
@@ -39,8 +58,10 @@ int main(int argc, char *argv[]) {
         yamlFileName = result["yaml-filename"].as<std::string>();
       }
 
-      SimulationConfig config = SimulationConfig(iterations,
+      SimulationConfig config = SimulationConfig(containerStructure,
+                                                 iterations,
                                                  deltaT,
+                                                 cutoff,
                                                  vtkOutput,
                                                  vtkFileName,
                                                  vtkWriteFrequency,
