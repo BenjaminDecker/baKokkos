@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <vector>
+#include "Coord3D.h"
 #include "Particle.h"
 
 /**

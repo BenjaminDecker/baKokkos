@@ -4,9 +4,6 @@
 
 #pragma once
 
-#include <vector>
-#include <iostream>
-#include <cmath>
 #include <Kokkos_Core.hpp>
 
 /**

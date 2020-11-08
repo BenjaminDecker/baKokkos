@@ -4,6 +4,10 @@
 
 #pragma once
 
+#include <Kokkos_Core.hpp>
+#include <vector>
+#include "Coord3D.h"
+#include "Particle.h"
 #include "YamlParser.h"
 
 using Coord3DView = Kokkos::View<Coord3D *>;
