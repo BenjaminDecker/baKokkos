@@ -3,18 +3,17 @@
 //
 
 #include "Simulation.h"
-Simulation::Simulation(const SimulationConfig& config) : config(config) {
-  std::cout << "Initializing particles..." << std::endl;
+Simulation::Simulation(const SimulationConfig &config) : config(config) {
+  spdlog::info("Initializing particles...");
   Kokkos::Timer timer;
   container = ParticleContainer(YamlParser(config.yamlFileName));
   const double time = timer.seconds();
-  std::cout << "Finished initializing " << container.size << " particles." << std::endl << "Time: " << time
-            << " seconds" << std::endl << std::endl;
+  spdlog::info("Finished initializing " + std::to_string(container.size) + " particles. Time: "
+                   + std::to_string(time) + " seconds.");
 }
 
-
 void Simulation::start() const {
-  std::cout << "Running Simulation..." << std::endl;
+  spdlog::info("Running Simulation...");
   Kokkos::Timer timer;
 
   //Iteration loop
@@ -23,7 +22,8 @@ void Simulation::start() const {
     //Calculate positions
     Kokkos::parallel_for("calculatePositions", container.size, KOKKOS_LAMBDA(int i) {
       container.positions(i) +=
-          container.velocities(i) * config.deltaT + container.forces(i) * ((config.deltaT * config.deltaT) / (2 * mass));
+          container.velocities(i) * config.deltaT
+              + container.forces(i) * ((config.deltaT * config.deltaT) / (2 * mass));
     });
 
     using team_policy = Kokkos::TeamPolicy<>;
@@ -75,13 +75,12 @@ void Simulation::start() const {
     }
 
     if (iteration % 1000 == 0) {
-      std::cout << iteration << std::endl;
+      spdlog::info("Iteration: {:0" + std::to_string(std::to_string(config.iterations).length()) + "d}", iteration);
     }
   }
 
   const double time = timer.seconds();
-  std::cout << "Finished simulating" << std::endl << "Time: " << time << " seconds" << std::endl << std::endl;
-
+  spdlog::info("Finished simulating. Time: " + std::to_string(time) + " seconds.");
 }
 void Simulation::writeVTKFile(int iteration) const {
   std::string fileBaseName("baKokkos");

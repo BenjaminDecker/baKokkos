@@ -19,8 +19,13 @@ FetchContent_Declare(
         GIT_REPOSITORY "https://github.com/jarro2783/cxxopts.git"
         GIT_TAG "v2.2.1"
 )
-FetchContent_MakeAvailable(kokkos yaml-cpp cxxopts)
+FetchContent_Declare(
+        spdlog
+        GIT_REPOSITORY "https://github.com/gabime/spdlog.git"
+        GIT_TAG "v1.8.1"
+)
+FetchContent_MakeAvailable(kokkos yaml-cpp cxxopts spdlog)
 add_executable(baKokkos main.cpp ParticleContainer.cpp ParticleContainer.h ParticlePropertiesLibrary.cpp ParticlePropertiesLibrary.h Coord3D.cpp Coord3D.h Particle.cpp Particle.h YamlParser.cpp YamlParser.h ParticleGroup.cpp ParticleGroup.h Simulation.cpp Simulation.h)
-target_link_libraries(baKokkos kokkos yaml-cpp cxxopts)
+target_link_libraries(baKokkos kokkos yaml-cpp cxxopts spdlog)
 
 include(doxygen.cmake)

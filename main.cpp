@@ -39,9 +39,9 @@ int main(int argc, char *argv[]) {
       } else if (containerStructureString == "LinkedCells") {
         containerStructure = SimulationConfig::ContainerStructure::LinkedCells;
       } else {
-        std::cout << '"' << containerStructureString << '"'
-                  << " is not a valid option for the field --containerStructure. Using "
-                  << '"' << "DirectSum" << '"' << " instead." << std::endl;
+        spdlog::info('"' + containerStructureString + '"'
+                         + " is not a valid option for the field --containerStructure. Using "
+                         + '"' + "DirectSum" + '"' + " instead.");
         containerStructure = SimulationConfig::ContainerStructure::DirectSum;
       }
 

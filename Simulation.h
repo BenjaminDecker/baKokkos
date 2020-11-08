@@ -7,6 +7,7 @@
 #include <iomanip>
 #include <fstream>
 #include <utility>
+#include <spdlog/spdlog.h>
 #include "ParticleContainer.h"
 
 /**
