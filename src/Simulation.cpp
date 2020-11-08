@@ -19,6 +19,12 @@ void Simulation::start() const {
   //Iteration loop
   for (int iteration = 0; iteration < config.iterations; ++iteration) {
 
+    if (config.vtkOutput) {
+      if (iteration % config.vtkWriteFrequency == 0) {
+        writeVTKFile(iteration);
+      }
+    }
+
     if (iteration % 1000 == 0) {
       spdlog::info("Iteration: {:0" + std::to_string(std::to_string(config.iterations).length()) + "d}", iteration);
     }
@@ -71,12 +77,6 @@ void Simulation::start() const {
     Kokkos::parallel_for("calculateVelocities", container.size, KOKKOS_LAMBDA(int i) {
       container.velocities(i) += (container.forces(i) + container.oldForces(i)) * (config.deltaT / (2 * mass));
     });
-
-    if (config.vtkOutput) {
-      if (iteration % config.vtkWriteFrequency == 0) {
-        writeVTKFile(iteration);
-      }
-    }
   }
 
   const double time = timer.seconds();

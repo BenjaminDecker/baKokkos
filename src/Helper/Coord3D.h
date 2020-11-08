@@ -96,6 +96,46 @@ struct Coord3D {
     y = y + rhs.y;
     z = z + rhs.z;
   }
+
+  /// Returns a point that was rotated from this points position along a line with the specified roll, pitch and yaw values in radians that goes through the specified point
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION
+  Coord3D rotateRollPitchYaw(double roll, double pitch, double yaw, const Coord3D &rotationPoint) const {
+    // https://math.stackexchange.com/questions/2796055/3d-coordinate-rotation-using-roll-pitch-yaw
+
+    double sinRoll = std::sin(roll);
+    double cosRoll = std::cos(roll);
+    double sinPitch = std::sin(pitch);
+    double cosPitch = std::cos(pitch);
+    double sinYaw = std::sin(yaw);
+    double cosYaw = std::cos(yaw);
+
+    Coord3D newPoint = Coord3D(x, y, z) + rotationPoint * (-1);
+    double newX = newPoint.x, newY = newPoint.y, newZ = newPoint.z;
+
+    // Rx
+    {
+      double tmpY = newY, tmpZ = newZ;
+      newY = tmpY * cosRoll - tmpZ * sinRoll;
+      newZ = tmpY * sinRoll + tmpZ * cosRoll;
+    }
+
+    // Ry
+    {
+      double tmpX = newX, tmpZ = newZ;
+      newX = tmpX * cosPitch + tmpZ * sinPitch;
+      newZ = -tmpX * sinPitch + tmpZ * cosPitch;
+    }
+
+    // Rz
+    {
+      double tmpX = newX, tmpY = newY;
+      newX = tmpX * cosYaw - tmpY * sinYaw;
+      newY = tmpX * sinYaw + tmpY * cosYaw;
+    }
+
+    return Coord3D(newX, newY, newZ) + rotationPoint;
+  }
+
 };
 
 /**

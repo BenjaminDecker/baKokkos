@@ -107,12 +107,11 @@ struct ParticleSphere : public ParticleGroup {
     const double ga = (2.0 - gr) * (2.0 * M_PI);  // golden angle = 2.39996322972865332
 
     // Iterate over sphere shells of radius i * spacing
-    for (int i = 0; i * spacing <= radius; ++i) {
-
+    for (int i = 1; i * spacing <= radius; ++i) {
       const double r = i * spacing; // Current radius
 
       const double shellArea = r * r * M_PI;
-      const int particlesOnShell = static_cast<int>(shellArea * (1 / std::sqrt(spacing)));
+      const int particlesOnShell = static_cast<int>(shellArea * (1.0 / std::sqrt(spacing)));
 
       // https://bduvenhage.me/geometry/2019/07/31/generating-equidistant-vectors.html
       for (int k = 1; k <= particlesOnShell; ++k) {
@@ -123,9 +122,8 @@ struct ParticleSphere : public ParticleGroup {
                                    sin(lon) * cos(lat) * r + center.y,
                                    sin(lat) * r + center.z);
 
-        particles.emplace_back(typeID, position, velocity);
+        particles.emplace_back(typeID, position.rotateRollPitchYaw(i, i, i, center), velocity);
       }
-
     }
   }
 };
