@@ -1,5 +1,5 @@
 //
-// Created by ffbde on 03/11/2020.
+// Created by Benjamin Decker on 03/11/2020.
 //
 
 #pragma once
@@ -18,7 +18,7 @@
  */
 struct SimulationConfig {
   enum ContainerStructure { DirectSum, LinkedCells }
-      containerStructure; /**< Represents which container structure is used to store and iterate over particles */
+  const containerStructure; /**< Represents which container structure is used to store and iterate over particles */
   const int iterations; /**< Number of iterations to simulate */
   const double deltaT; /**< Length of one time step of the simulation */
 
@@ -67,7 +67,7 @@ class Simulation {
   const double twentyFourEpsilonSigmaPow6 = 24 * epsilon * sigmaPow6;
   const double fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
 
-  /// The simulation is initialized by parsing the command line input for parameters
+  /// The simulation is initialized by reading the info from the SimulationConfig struct
   explicit Simulation(const SimulationConfig &config);
 
   /// Starts the simulation
