@@ -53,6 +53,12 @@ struct Coord3D {
     return Coord3D{x + rhs.x, y + rhs.y, z + rhs.z};
   }
 
+  /// Component-wise subtraction of two Coord3D's.
+  KOKKOS_INLINE_FUNCTION
+  Coord3D operator-(const Coord3D &rhs) const {
+    return Coord3D{x - rhs.x, y - rhs.y, z - rhs.z};
+  }
+
   /// Component-wise multiplication of two Coord3D's.
   KOKKOS_INLINE_FUNCTION
   Coord3D operator*(double rhs) const {

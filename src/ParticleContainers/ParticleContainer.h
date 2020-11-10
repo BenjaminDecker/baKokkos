@@ -5,6 +5,8 @@
 #pragma once
 #include "../Helper/Particle.h"
 
+using Coord3DView = Kokkos::View<Coord3D *>;
+
 /**
  * @brief Manages particle information in device memory and offers reading and writing to it from the host space.
  *
@@ -15,8 +17,12 @@
  * 3-dimensional vectors are saved via the Coord3D struct.
  */
 class ParticleContainer {
+ public:
+  unsigned int size; /**< Number of saved particles */
+
   /// Creates a Particle from the particle information in device memory with the specified id.
   [[nodiscard]] virtual Particle getParticle(int id) const = 0;
+
   /// Inserts the information stored in a Particle into device memory with the specified id.
   virtual void insertParticle(const Particle &particle, int id) const = 0;
 };

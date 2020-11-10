@@ -11,8 +11,6 @@
 #include "../../Helper/Particle.h"
 #include "../../Yaml/YamlParser.h"
 
-using Coord3DView = Kokkos::View<Coord3D *>;
-
 /**
  * @brief Uses no special layout. Computations are simple, but performance is bad.
  *
@@ -26,7 +24,6 @@ using Coord3DView = Kokkos::View<Coord3D *>;
  */
 class DirectSumParticleContainer : public ParticleContainer {
  public:
-  unsigned int size; /**< Number of saved particles */
   Kokkos::View<int *> typeIDs; /**< Type identifiers for looking up further particle properties */
   Coord3DView positions; /**< Array of 3-dimensional position vectors */
   Coord3DView forces; /**< Array of 3-dimensional force vectors acting on particles */

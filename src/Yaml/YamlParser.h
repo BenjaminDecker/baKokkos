@@ -15,6 +15,9 @@
  */
 class YamlParser {
  public:
+  double cutoff;
+  Coord3D boxMin;
+  Coord3D boxMax;
   std::vector<ParticleCuboid> particleCuboids; /**< Cuboids that could be read from the .yamlFile */
   std::vector<ParticleSphere> particleSpheres; /**< Spheres that could be read from the .yamlFile */
   explicit YamlParser(const std::string &fileName); /**< Initializes the parser and starts parsing the specified file */
