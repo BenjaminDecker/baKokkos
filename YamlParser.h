@@ -6,7 +6,7 @@
 
 #include <vector>
 #include <yaml-cpp/yaml.h>
-#include "../Helper/Coord3D.h"
+#include "Coord3D.h"
 #include "ParticleGroup.h"
 
 /**

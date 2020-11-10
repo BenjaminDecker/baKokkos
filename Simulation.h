@@ -8,9 +8,9 @@
 #include <fstream>
 #include <spdlog/spdlog.h>
 #include <iomanip>
-#include "Helper/Coord3D.h"
-#include "Yaml/YamlParser.h"
-#include "ParticleContainers/DirectSum/DirectSumParticleContainer.h"
+#include "Coord3D.h"
+#include "YamlParser.h"
+#include "DirectSumParticleContainer.h"
 
 /**
  * @brief This struct stores configuration information for the simulation. It is needed to create a Simulation object.

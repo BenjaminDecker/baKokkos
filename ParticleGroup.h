@@ -5,8 +5,8 @@
 #pragma once
 
 #include <vector>
-#include "../Helper/Coord3D.h"
-#include "../Helper/Particle.h"
+#include "Coord3D.h"
+#include "Particle.h"
 
 /**
  * @brief Superclass for particle groups.

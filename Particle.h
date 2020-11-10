@@ -20,10 +20,16 @@ struct Particle {
   Coord3D oldForce; /**< 3-dimensional force vector acting on particle from the previous iteration */
   Coord3D velocity; /**< 3-dimensional velocity vector */
 
-
+  KOKKOS_INLINE_FUNCTION
   explicit Particle(int typeID) : typeID(typeID) {}
+
+  KOKKOS_INLINE_FUNCTION
   Particle(int typeID, Coord3D position) : typeID(typeID), position(position) {}
+
+  KOKKOS_INLINE_FUNCTION
   Particle(int typeID, Coord3D position, Coord3D velocity) : typeID(typeID), position(position), velocity(velocity) {}
+
+  KOKKOS_INLINE_FUNCTION
   Particle(int typeID, Coord3D position, Coord3D force, Coord3D velocity, Coord3D oldForce)
       : typeID(typeID), position(position), force(force), velocity(velocity), oldForce(oldForce) {}
 };

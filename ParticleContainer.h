@@ -3,7 +3,7 @@
 //
 
 #pragma once
-#include "../Helper/Particle.h"
+#include "Particle.h"
 
 using Coord3DView = Kokkos::View<Coord3D *>;
 
