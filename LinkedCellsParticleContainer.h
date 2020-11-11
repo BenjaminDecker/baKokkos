@@ -6,6 +6,7 @@
 
 #include <Kokkos_Core.hpp>
 #include <vector>
+#include <fstream>
 #include "ParticleContainer.h"
 #include "Coord3D.h"
 #include "Particle.h"
@@ -221,6 +222,87 @@ class LinkedCellsParticleContainer {
 //                                                    (cell.forces(id) + cell.oldForces(id)) * (deltaT / (2 * mass));
 //                                              });
 //                       });
+  }
+
+  void writeVTKFile(int iteration, int maxIterations, const std::string &fileName) const {
+
+
+    std::string fileBaseName("baKokkos");
+    std::ostringstream strstr;
+    auto maxNumDigits = std::to_string(maxIterations).length();
+    std::vector<Particle> particles;
+    for(auto &cell : cells) {
+      for (int i = 0; i < cell.size; ++i) {
+        particles.push_back(cell.getParticle(i));
+      }
+    }
+    strstr << fileBaseName << "_" << std::setfill('0') << std::setw(maxNumDigits) << iteration << ".vtk";
+    std::ofstream vtkFile;
+    vtkFile.open(strstr.str());
+
+    if (not vtkFile.is_open()) {
+      throw std::runtime_error("Simulation::writeVTKFile(): Failed to open file \"" + strstr.str() + "\"");
+    }
+
+    vtkFile << "# vtk DataFile Version 2.0" << std::endl;
+    vtkFile << "Timestep" << std::endl;
+    vtkFile << "ASCII" << std::endl;
+
+    // print positions
+    vtkFile << "DATASET STRUCTURED_GRID" << std::endl;
+    vtkFile << "DIMENSIONS 1 1 1" << std::endl;
+    vtkFile << "POINTS " << numParticles << " double" << std::endl;
+    for(auto &cell : cells) {
+      for (int i = 0; i < cell.size; ++i) {
+        auto coord = cell.
+      }
+    }
+    for (int i = 0; i < numParticles; ++i) {
+      auto coord = container.getParticle(i).position;
+      vtkFile << coord.x << " " << coord.y << " " << coord.z << std::endl;
+    }
+    vtkFile << std::endl;
+
+    vtkFile << "POINT_DATA " << numParticles << std::endl;
+    // print velocities
+    vtkFile << "VECTORS velocities double" << std::endl;
+    for (int i = 0; i < numParticles; ++i) {
+      auto coord = container.getParticle(i).velocity;
+      vtkFile << coord.x << " " << coord.y << " " << coord.z << std::endl;
+    }
+    vtkFile << std::endl;
+
+    // print Forces
+    vtkFile << "VECTORS forces double" << std::endl;
+    for (int i = 0; i < numParticles; ++i) {
+      auto coord = container.getParticle(i).force;
+      vtkFile << coord.x << " " << coord.y << " " << coord.z << std::endl;
+    }
+    vtkFile << std::endl;
+
+    // print TypeIDs
+    vtkFile << "SCALARS typeIds int" << std::endl;
+    vtkFile << "LOOKUP_TABLE default" << std::endl;
+    for (int i = 0; i < numParticles; ++i) {
+      vtkFile << container.getParticle(i).typeID << std::endl;
+    }
+    vtkFile << std::endl;
+
+    // print TypeIDs
+    vtkFile << "SCALARS particleIds int" << std::endl;
+    vtkFile << "LOOKUP_TABLE default" << std::endl;
+    for (int i = 0; i < numParticles; ++i) {
+      vtkFile << i << std::endl;
+    }
+    vtkFile << std::endl;
+    vtkFile.close();
+
+
+
+
+
+
+
   }
 
  private:

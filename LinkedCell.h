@@ -38,6 +38,15 @@ struct LinkedCell {
         oldForces(Coord3DView("oldForces", size)),
         velocities(Coord3DView("velocities", size)) {}
 
+  Particle getParticle(int index) const {
+    int typeID = Kokkos::create_mirror_view(Kokkos::subview(typeIDs, index))();
+    Coord3D position = Kokkos::create_mirror_view(Kokkos::subview(positions, index))();
+    Coord3D force = Kokkos::create_mirror_view(Kokkos::subview(forces, index))();
+    Coord3D oldForce = Kokkos::create_mirror_view(Kokkos::subview(oldForces, index))();
+    Coord3D velocity = Kokkos::create_mirror_view(Kokkos::subview(velocities, index))();
+    return Particle(typeID, position, force, velocity, oldForce);
+  }
+
   void addParticle(const Particle &p) {
     if (size == capacity) {
       capacity *= 2;
@@ -70,7 +79,7 @@ struct LinkedCell {
     ++size;
   }
 
-  
+
 //  void removeParticle(int index) {
 //    --size;
 //    Kokkos::parallel_for("removeParticle", 1, KOKKOS_LAMBDA(int i) {
