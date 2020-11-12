@@ -4,62 +4,17 @@
 
 #pragma once
 
-#include <Kokkos_Core.hpp>
-#include <fstream>
-#include <spdlog/spdlog.h>
-#include <iomanip>
-#include "Coord3D.h"
-#include "YamlParser.h"
-#include "DirectSumParticleContainer.h"
+#include "SimulationConfig.h"
 #include "LinkedCellsParticleContainer.h"
-
-/**
- * @brief This struct stores configuration information for the simulation. It is needed to create a Simulation object.
- *
- * @see Simulation
- */
-struct SimulationConfig {
-  enum ContainerStructure { DirectSum, LinkedCells }
-  const containerStructure; /**< Represents which container structure is used to store and iterate over particles */
-  const int iterations; /**< Number of iterations to simulate */
-  const double deltaT; /**< Length of one time step of the simulation */
-
-  const bool vtkOutput = false; /**< Indicates if the user specified a vtk file name as output */
-  const std::string vtkFileName; /**< Basename for all VTK output files */
-
-  const int vtkWriteFrequency; /**< Number of iterations after which a VTK file is written */
-
-  const bool yamlInput = false; /**< Indicates if the user specified a yaml file path as input */
-  const std::string yamlFileName; /**< Path to the.yaml file used as input */
-
-  SimulationConfig(ContainerStructure containerStructure,
-                   int iterations,
-                   double delta_t,
-                   double cutoff,
-                   bool vtk_output,
-                   std::string vtk_file_name,
-                   int vtk_write_frequency,
-                   bool yaml_input,
-                   std::string yaml_file_name)
-      : containerStructure(containerStructure),
-        iterations(iterations),
-        deltaT(delta_t),
-        vtkOutput(vtk_output),
-        vtkFileName(std::move(vtk_file_name)),
-        vtkWriteFrequency(vtk_write_frequency),
-        yamlInput(yaml_input),
-        yamlFileName(std::move(yaml_file_name)) {}
-};
+#include <spdlog//spdlog.h>
 
 /**
  * @brief This class controls the simulation
  */
 class Simulation {
  public:
-  //DirectSumParticleContainer container; /**< Stores and manages particle data in device memory */
-  LinkedCellsParticleContainer container2;
-
-  const SimulationConfig config; /**< Stores configuration information for the simulation */
+  const SimulationConfig config;
+  LinkedCellsParticleContainer container;
 
   //TODO get those from the ParticlePropertiesLibrary
   const double epsilon = 1;
@@ -70,17 +25,36 @@ class Simulation {
   const double twentyFourEpsilonSigmaPow6 = 24 * epsilon * sigmaPow6;
   const double fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
 
-  /// The simulation is initialized by reading the info from the SimulationConfig struct
-  explicit Simulation(const SimulationConfig &config);
+  explicit Simulation(SimulationConfig config, std::vector<Particle> &particles) : config(std::move(config)) {
+    container = LinkedCellsParticleContainer(particles, config);
+  }
+
 
   /// Starts the simulation
-  void start();
+  void start() {
+    spdlog::info("Running Simulation...");
+    Kokkos::Timer timer;
 
-  /**
-   * Writes a .vtk file about the current state of the simulation
-   * @param Current iteration
-   */
-  void writeVTKFile(int iteration) const;
+    //Iteration loop
+    for (int iteration = 0; iteration < config.iterations; ++iteration) {
+      if (config.vtkFileName) {
+        if (iteration % config.vtkWriteFrequency == 0) {
+          container.writeVTKFile(iteration, config.iterations, config.vtkFileName.value());
+        }
+      }
+
+      if (iteration % 1000 == 0) {
+        spdlog::info("Iteration: {:0" + std::to_string(std::to_string(config.iterations).length()) + "d}", iteration);
+      }
+
+      container.iterateCalculatePositions(config.deltaT);
+      container.iterateCalculateForces();
+      container.iterateCalculateVelocities(config.deltaT);
+    }
+
+    const double time = timer.seconds();
+    spdlog::info("Finished simulating. Time: " + std::to_string(time) + " seconds.");
+  }
 };
 
 

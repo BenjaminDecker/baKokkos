@@ -22,8 +22,9 @@
  *
  * @see Particle, Coord3D
  */
-class DirectSumParticleContainer : public ParticleContainer {
+class DirectSumParticleContainer {
  public:
+  int size;
   Kokkos::View<int *> typeIDs; /**< Type identifiers for looking up further particle properties */
   Coord3DView positions; /**< Array of 3-dimensional position vectors */
   Coord3DView forces; /**< Array of 3-dimensional force vectors acting on particles */
@@ -38,8 +39,8 @@ class DirectSumParticleContainer : public ParticleContainer {
   DirectSumParticleContainer() = default;
 
   /// Creates a Particle from the particle information in device memory with the specified id.
-  [[nodiscard]] Particle getParticle(int id) const override;
+  [[nodiscard]] Particle getParticle(int id) const;
 
   /// Inserts the information stored in a Particle into device memory with the specified id.
-  void insertParticle(const Particle &particle, int id) const override;
+  void insertParticle(const Particle &particle, int id) const;
 };

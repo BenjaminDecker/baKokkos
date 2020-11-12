@@ -18,11 +18,11 @@ struct LinkedCell {
   LinkedCell()
       : size(0),
         capacity(1),
-        typeIDs(Kokkos::View<int *>("typeIDs", size)),
-        positions(Coord3DView("positions", size)),
-        forces(Coord3DView("forces", size)),
-        oldForces(Coord3DView("oldForces", size)),
-        velocities(Coord3DView("velocities", size)) {}
+        typeIDs(Kokkos::View<int *>("typeIDs", capacity)),
+        positions(Coord3DView("positions", capacity)),
+        forces(Coord3DView("forces", capacity)),
+        oldForces(Coord3DView("oldForces", capacity)),
+        velocities(Coord3DView("velocities", capacity)) {}
 
   [[nodiscard]] Particle getParticle(int index) const {
     int typeID = Kokkos::create_mirror_view(Kokkos::subview(typeIDs, index))();
@@ -34,29 +34,14 @@ struct LinkedCell {
   }
 
   void addParticle(const Particle &p) {
-    std::cout << size << "\t" << capacity << std::endl;
     if (size == capacity) {
       capacity *= 2;
-      std::cout << size << "\t" << capacity << std::endl;
-      Kokkos::View<int *> newTypeIDs = Kokkos::View<int *>("typeIDs", capacity);
-      Coord3DView newPositions = Coord3DView("positions", capacity);
-      Coord3DView newForces = Coord3DView("forces", capacity);
-      Coord3DView newOldForces = Coord3DView("oldForces", capacity);
-      Coord3DView newVelocities = Coord3DView("velocities", capacity);
-      Kokkos::parallel_for(size, KOKKOS_LAMBDA(int i) {
-        newTypeIDs(i) = typeIDs(i);
-        newPositions(i) = positions(i);
-        newForces(i) = forces(i);
-        newOldForces(i) = oldForces(i);
-        newVelocities(i) = velocities(i);
-      });
-      typeIDs = newTypeIDs;
-      positions = newPositions;
-      forces = newForces;
-      oldForces = newOldForces;
-      velocities = newVelocities;
+      Kokkos::resize(typeIDs, capacity);
+      Kokkos::resize(positions, capacity);
+      Kokkos::resize(forces, capacity);
+      Kokkos::resize(oldForces, capacity);
+      Kokkos::resize(velocities, capacity);
     }
-    std::cout << size << "\t" << capacity << std::endl;
     Kokkos::parallel_for("addParticle", 1, KOKKOS_LAMBDA(int i) {
       typeIDs(size) = p.typeID;
       positions(size) = p.position;
@@ -65,6 +50,5 @@ struct LinkedCell {
       velocities(size) = p.velocity;
     });
     ++size;
-    std::cout << size << "\t" << capacity << std::endl << std::endl;
   }
 };
