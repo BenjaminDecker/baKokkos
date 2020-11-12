@@ -3,6 +3,8 @@
 #include <cxxopts.hpp>
 #include <spdlog/spdlog.h>
 #include "Simulation.h"
+
+
 int main(int argc, char *argv[]) {
   Kokkos::initialize(argc, argv);
   {

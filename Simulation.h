@@ -11,6 +11,7 @@
 #include "Coord3D.h"
 #include "YamlParser.h"
 #include "DirectSumParticleContainer.h"
+#include "LinkedCellsParticleContainer.h"
 
 /**
  * @brief This struct stores configuration information for the simulation. It is needed to create a Simulation object.
@@ -55,7 +56,8 @@ struct SimulationConfig {
  */
 class Simulation {
  public:
-  DirectSumParticleContainer container; /**< Stores and manages particle data in device memory */
+  //DirectSumParticleContainer container; /**< Stores and manages particle data in device memory */
+  LinkedCellsParticleContainer container2;
 
   const SimulationConfig config; /**< Stores configuration information for the simulation */
 
@@ -72,7 +74,7 @@ class Simulation {
   explicit Simulation(const SimulationConfig &config);
 
   /// Starts the simulation
-  void start() const;
+  void start();
 
   /**
    * Writes a .vtk file about the current state of the simulation
