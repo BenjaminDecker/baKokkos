@@ -42,7 +42,18 @@ LinkedCellsParticleContainer::LinkedCellsParticleContainer(std::vector<Particle>
   numCellsY = static_cast<int>(boxSize.y / cutoff);
   numCellsZ = static_cast<int>(boxSize.z / cutoff);
   int numCells = numCellsX * numCellsY * numCellsZ;
-  cells.resize(numCells);
+
+  sizesAndCapacites = SizesAndCapacitiesType("sizedAndCapacities", numCells);
+  // Set starting capacity of all cells to 1
+  for (int i = 0; i < numCells; ++i) {
+    sizesAndCapacites(i, 1) = 1;
+  }
+
+  cells = CellsViewType(Kokkos::view_alloc(std::string("Cells"), Kokkos::WithoutInitializing), numCells);
+  for (int i = 0; i < numCells; ++i) {
+    const std::string label = std::string("Cell ") + std::to_string(i);
+    new(&cells[i]) ParticlesViewType(Kokkos::view_alloc(label, Kokkos::WithoutInitializing), sizesAndCapacites(i, 1));
+  }
 
   for (auto &particle : particles) {
     Coord3D cellPosition = (particle.position - boxMin) / cutoff;
@@ -50,9 +61,27 @@ LinkedCellsParticleContainer::LinkedCellsParticleContainer(std::vector<Particle>
                                 static_cast<int>(cellPosition.y),
                                 static_cast<int>(cellPosition.z));
     if (0 <= cellNumber && cellNumber < numCells) {
+      if (sizesAndCapacites(cellNumber, 0) == sizesAndCapacites(cellNumber, 1)) {
+        doubleCellCapacity(cellNumber);
+      }
+      // TODO insert particle
       cells[cellNumber].addParticle(particle);
     }
   }
+  neighbours = Kokkos::View<int *[26]>("neighbours", cells.size());
+  auto h_neighbours = Kokkos::create_mirror_view(neighbours);
+  for (int i = 0; i < cells.size(); ++i) {
+    auto neighbourNumbers = getNeighbourCellNumbers(i);
+    for (int k = 0; k < 26; ++k) {
+      if (k < neighbourNumbers.size()) {
+        h_neighbours(i, k) = neighbourNumbers[k];
+      } else {
+        h_neighbours(i, k) = -1;
+      }
+    }
+  }
+  Kokkos::deep_copy(neighbours, h_neighbours);
+
   const double time = timer.seconds();
   spdlog::info("Finished initializing " + std::to_string(particles.size()) + " particles. Time: "
                    + std::to_string(time) + " seconds.");
@@ -76,6 +105,10 @@ void LinkedCellsParticleContainer::iterateCalculateForces() {
   const double sigmaPow6 = sigma * sigma * sigma * sigma * sigma * sigma;
   const double twentyFourEpsilonSigmaPow6 = 24 * epsilon * sigmaPow6;
   const double fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
+
+  Kokkos::parallel_for("iterateCalculateForces", cells.size(), KOKKOS_LAMBDA(int i) {
+  });
+
 
   using team_policy = Kokkos::TeamPolicy<>;
   using member_type = Kokkos::TeamPolicy<>::member_type;
@@ -226,4 +259,27 @@ std::vector<int> LinkedCellsParticleContainer::getNeighbourCellNumbers(int cellN
     }
   }
   return neighbours;
+}
+void LinkedCellsParticleContainer::doubleCellCapacity(int cellNumber) const {
+  int size = sizesAndCapacites(cellNumber, 0);
+  int capacity = sizesAndCapacites(cellNumber, 1) * 2;
+  std::string label = cells[cellNumber].label();
+  ParticlesViewType newCell = ParticlesViewType(label, capacity);
+  Kokkos::parallel_for("read new cell " + std::to_string(cellNumber),
+                       size,
+                       KOKKOS_LAMBDA(int i) {
+                         for (int k = 0; k < PARTICLE_SIZE; ++k) {
+                           newCell(i, k) = cells(cellNumber)(i, k);
+                         }
+                       });
+  Kokkos::fence();
+  cells[cellNumber].~ParticlesViewType();
+  new(&cells[cellNumber]) ParticlesViewType(Kokkos::view_alloc(label, Kokkos::WithoutInitializing), capacity);
+  Kokkos::parallel_for("write new cell " + std::to_string(cellNumber),
+                       size,
+                       KOKKOS_LAMBDA(int i) {
+                         for (int k = 0; k < PARTICLE_SIZE; ++k) {
+                           cells(cellNumber)(i, k) = newCell(i, k);
+                         }
+                       });
 }

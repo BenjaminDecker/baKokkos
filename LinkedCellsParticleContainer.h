@@ -7,6 +7,22 @@
 #include "LinkedCell.h"
 #include "SimulationConfig.h"
 
+#ifdef KOKKOS_ENABLE_CUDA
+#define Space Kokkos::CudaSpace
+#define SharedSpace Kokkos::CudaUVMSpace
+#endif
+#ifndef Space
+#define Space Kokkos::DefaultExecutionSpace
+#endif
+#ifndef SharedSpace
+#define SharedSpace Kokkos::DefaultExecutionSpace
+#endif
+
+constexpr int PARTICLE_SIZE = 13;
+using ParticlesViewType = Kokkos::View<double *[PARTICLE_SIZE], Space>;
+using CellsViewType = Kokkos::View<ParticlesViewType *, SharedSpace>;
+using SizesAndCapacitiesType = Kokkos::View<int *[2], SharedSpace>;
+
 /**
  * @brief Divides the simulation domain into cells, which contain particles.
  *
@@ -21,7 +37,10 @@
  */
 class LinkedCellsParticleContainer {
  public:
-  std::vector<LinkedCell> cells;
+
+  CellsViewType cells;
+  SizesAndCapacitiesType sizesAndCapacites;
+  Kokkos::View<int *[26]> neighbours;
   int numCellsX{};
   int numCellsY{};
   int numCellsZ{};
@@ -44,4 +63,5 @@ class LinkedCellsParticleContainer {
   [[nodiscard]] int getIndexOf(int x, int y, int z) const;
   [[nodiscard]] std::array<int, 3> getCoordinates(int cellNumber) const;
   [[nodiscard]] std::vector<int> getNeighbourCellNumbers(int cellNumber);
+  void doubleCellCapacity(int cellNumber) const;
 };
