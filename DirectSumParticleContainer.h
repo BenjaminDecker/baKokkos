@@ -22,25 +22,25 @@
  *
  * @see Particle, Coord3D
  */
-class DirectSumParticleContainer {
- public:
-  int size;
-  Kokkos::View<int *> typeIDs; /**< Type identifiers for looking up further particle properties */
-  Coord3DView positions; /**< Array of 3-dimensional position vectors */
-  Coord3DView forces; /**< Array of 3-dimensional force vectors acting on particles */
-  Coord3DView oldForces; /**< Array of 3-dimensional force vectors acting on particles from the previous iteration */
-  Coord3DView velocities; /**< Array of 3-dimensional velocity vectors */
-
-  /**
-   * @brief Initialises particles
-   * @param parser stores particle information from a .yaml file
-   */
-  explicit DirectSumParticleContainer(const YamlParser &parser);
-  DirectSumParticleContainer() = default;
-
-  /// Creates a Particle from the particle information in device memory with the specified id.
-  [[nodiscard]] Particle getParticle(int id) const;
-
-  /// Inserts the information stored in a Particle into device memory with the specified id.
-  void insertParticle(const Particle &particle, int id) const;
-};
+//class DirectSumParticleContainer {
+// public:
+//  int size;
+//  Kokkos::View<int *> typeIDs; /**< Type identifiers for looking up further particle properties */
+//  Coord3DView positions; /**< Array of 3-dimensional position vectors */
+//  Coord3DView forces; /**< Array of 3-dimensional force vectors acting on particles */
+//  Coord3DView oldForces; /**< Array of 3-dimensional force vectors acting on particles from the previous iteration */
+//  Coord3DView velocities; /**< Array of 3-dimensional velocity vectors */
+//
+//  /**
+//   * @brief Initialises particles
+//   * @param parser stores particle information from a .yaml file
+//   */
+//  explicit DirectSumParticleContainer(const YamlParser &parser);
+//  DirectSumParticleContainer() = default;
+//
+//  /// Creates a Particle from the particle information in device memory with the specified id.
+//  [[nodiscard]] Particle getParticle(int id) const;
+//
+//  /// Inserts the information stored in a Particle into device memory with the specified id.
+//  void insertParticle(const Particle &particle, int id) const;
+//};

@@ -92,12 +92,17 @@ int main(int argc, char *argv[]) {
           vtkWriteFrequency = yamlVtkWriteFrequency.value();
         }
         for (auto &cuboid : parser.particleCuboids) {
-          cuboid.getParticles(particles);
+          for(auto &newParticle : cuboid.getParticles(particles.size())) {
+            particles.push_back(newParticle);
+          }
         }
         for (auto &sphere : parser.particleSpheres) {
-          sphere.getParticles(particles);
+          for(auto &newParticle : sphere.getParticles(particles.size())) {
+            particles.push_back(newParticle);
+          }
         }
       }
+
 
       // TODO add particles from command line. For now it is only possible to add particles from .yaml files
 

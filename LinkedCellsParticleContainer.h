@@ -5,7 +5,7 @@
 #pragma once
 
 #include <array>
-#include "LinkedCell.h"
+#include "Particle.h"
 #include "SimulationConfig.h"
 
 #ifdef KOKKOS_ENABLE_CUDA
@@ -33,9 +33,22 @@
 using SizesAndCapacitiesType = Kokkos::View<int *[2], SharedSpace>;
 
 /**
- * A view of "particles" that each consist of a 3 dimensional coordinate for each of its 4 properties (position, force, oldForce, velocity)
+ * A list that keeps track of which index of the "particles" stored in a CellViewType is used for which property
  */
-using CellViewType = Kokkos::View<Coord3D *[4]>;
+enum ParticleIndices {
+  position = 0,
+  velocity = 1,
+  force = 2,
+  oldForce = 3,
+  particleIDAndTypeID = 4
+};
+
+/**
+ * A view of "particles" that each consist of a 3 dimensional coordinate for each of its 5 properties
+ * (position, force, oldForce, velocity, (particleID, typeID)).
+ * The fifth property saves the particleID as the x coordinate and the typeID as a y coordinate of a Coord3D object.
+ */
+using CellViewType = Kokkos::View<Coord3D *[5]>;
 
 /**
  * A view of "cells" that each contain another view of type CellViewType which contains the particles the particles of that cell
@@ -43,13 +56,6 @@ using CellViewType = Kokkos::View<Coord3D *[4]>;
  * @see CellViewType
  */
 using ContainerViewType = Kokkos::View<CellViewType *, SharedSpace>;
-
-enum ParticleIndices {
-  position = 0,
-  velocity = 1,
-  force = 2,
-  oldForce = 3
-};
 
 /**
  * @brief Saves particles inside of cells that make up the simulation space
@@ -67,7 +73,7 @@ enum ParticleIndices {
 class LinkedCellsParticleContainer {
  public:
   ContainerViewType cells; /**< Contains the linked cells that make up the simulation space */
-  SizesAndCapacitiesType sizesAndCapacites;
+  SizesAndCapacitiesType sizesAndCapacities;
   Kokkos::View<int *[27]> neighbours;
   Coord3D boxMin;
   Coord3D boxMax;

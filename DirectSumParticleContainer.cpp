@@ -4,6 +4,7 @@
 
 #include "DirectSumParticleContainer.h"
 
+/*
 DirectSumParticleContainer::DirectSumParticleContainer(const YamlParser &parser) {
   std::vector<std::vector<Particle>> cuboids;
   std::vector<std::vector<Particle>> spheres;
@@ -94,3 +95,4 @@ void DirectSumParticleContainer::insertParticle(const Particle &particle, int id
   Kokkos::deep_copy(subOF, h_subOF);
   Kokkos::deep_copy(subV, h_subV);
 }
+*/

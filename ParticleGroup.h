@@ -36,8 +36,11 @@ struct ParticleGroup {
         particleSigma(particleSigma),
         particleMass(particleMass) {}
 
-  /// Creates particles based on the group parameters and appends them to the given vector
-  virtual void getParticles(std::vector<Particle> &particles) const = 0;
+  /// Creates particles based on the group parameters and returns them inside of a std::vector
+  [[nodiscard]] virtual std::vector<Particle> getParticles() const = 0;
+
+  /// Creates particles with a given start ID based on the group parameters and returns them inside of a std::vector
+  [[nodiscard]] virtual std::vector<Particle> getParticles(int startID) const = 0;
 };
 
 /**
@@ -61,17 +64,24 @@ struct ParticleCuboid : public ParticleGroup {
         particlesPerDimension(particlesPerDimension) {}
 
   /// Places particles in a cuboid grid with dimensions based on the particlesPerDimension and the spacing property.
-  void getParticles(std::vector<Particle> &particles) const override {
+  [[nodiscard]] std::vector<Particle> getParticles(int startID) const override {
+    std::vector<Particle> particles;
+    int idCounter = startID;
     for (int x = 0; x < particlesPerDimension.x; ++x) {
       for (int y = 0; y < particlesPerDimension.y; ++y) {
         for (int z = 0; z < particlesPerDimension.z; ++z) {
           Coord3D position = Coord3D(bottomLeftCorner.x + x * spacing,
                                      bottomLeftCorner.y + y * spacing,
                                      bottomLeftCorner.z + z * spacing);
-          particles.emplace_back(typeID, position, velocity);
+          particles.emplace_back(idCounter++, typeID, position, velocity);
         }
       }
     }
+    return particles;
+  }
+
+  [[nodiscard]] std::vector<Particle> getParticles() const override {
+    return getParticles(0);
   }
 };
 
@@ -100,8 +110,10 @@ struct ParticleSphere : public ParticleGroup {
    * Each particle will roughly have a distance of spacing to the next particle, if the particle density is set at
    * 1/(sqrt(spacing)). The total amount of particles on one sphere shell is therefore: area * 1/(sqrt(spacing)).
    */
-  void getParticles(std::vector<Particle> &particles) const override {
-    particles.emplace_back(typeID, center, velocity);
+  [[nodiscard]] std::vector<Particle> getParticles(int startID) const override {
+    std::vector<Particle> particles;
+    int idCounter = startID;
+    particles.emplace_back(idCounter++, typeID, center, velocity);
 
     const double gr = (sqrt(5.0) + 1.0) / 2.0;  // golden ratio = 1.6180339887498948482
     const double ga = (2.0 - gr) * (2.0 * M_PI);  // golden angle = 2.39996322972865332
@@ -122,8 +134,13 @@ struct ParticleSphere : public ParticleGroup {
                                    sin(lon) * cos(lat) * r + center.y,
                                    sin(lat) * r + center.z);
 
-        particles.emplace_back(typeID, position.rotateRollPitchYaw(i, i, i, center), velocity);
+        particles.emplace_back(idCounter++, typeID, position.rotateRollPitchYaw(i, i, i, center), velocity);
       }
     }
+    return particles;
+  }
+
+  [[nodiscard]] std::vector<Particle> getParticles() const override {
+    return getParticles(0);
   }
 };
