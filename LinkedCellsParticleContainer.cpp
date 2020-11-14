@@ -92,7 +92,6 @@ void LinkedCellsParticleContainer::addParticle(const Particle &particle) {
       cells(cellNumber)(index, ParticleIndices::force) = particle.force;
       cells(cellNumber)(index, ParticleIndices::oldForce) = particle.oldForce;
     });
-    Kokkos::fence();
     ++sizesAndCapacites(cellNumber, 0);
   }
 }
@@ -111,7 +110,6 @@ std::vector<Particle> LinkedCellsParticleContainer::getParticles() const {
                              h_particles(particleNumber, ParticleIndices::oldForce));
     }
   }
-  Kokkos::fence();
   return particles;
 }
 
@@ -126,7 +124,6 @@ void LinkedCellsParticleContainer::iterateCalculatePositions(double deltaT) cons
               + cells(cellNumber)(particleNumber, ParticleIndices::force) * ((deltaT * deltaT) / (2 * mass));
     }
   });
-  Kokkos::fence();
 }
 
 void LinkedCellsParticleContainer::iterateCalculateForces() const {
@@ -164,7 +161,6 @@ void LinkedCellsParticleContainer::iterateCalculateForces() const {
       cells(cellNumber)(id_1, ParticleIndices::force) = force;
     }
   });
-  Kokkos::fence();
 }
 
 void LinkedCellsParticleContainer::iterateCalculateVelocities(double deltaT) const {
@@ -180,7 +176,6 @@ void LinkedCellsParticleContainer::iterateCalculateVelocities(double deltaT) con
               * (deltaT / (2 * mass));
     }
   });
-  Kokkos::fence();
 }
 
 void LinkedCellsParticleContainer::writeVTKFile(int iteration, int maxIterations, const std::string &fileName) const {
@@ -274,10 +269,11 @@ std::vector<int> LinkedCellsParticleContainer::getNeighbourCellNumbers(int cellN
 }
 
 void LinkedCellsParticleContainer::resizeCellCapacity(int cellNumber, int factor) const {
-  int size = sizesAndCapacites(cellNumber, 0);
-  int capacity = sizesAndCapacites(cellNumber, 1) * factor;
-  std::string label = cells[cellNumber].label();
-  CellViewType newCell = CellViewType(label, capacity);
+  const int size = sizesAndCapacites(cellNumber, 0);
+  const int newCapacity = sizesAndCapacites(cellNumber, 1) * factor;
+  sizesAndCapacites(cellNumber, 1) = newCapacity;
+  const std::string label = cells[cellNumber].label();
+  CellViewType newCell = CellViewType(label, newCapacity);
   Kokkos::parallel_for("read new cell " + std::to_string(cellNumber),
                        size,
                        KOKKOS_LAMBDA(int i) {
@@ -287,7 +283,7 @@ void LinkedCellsParticleContainer::resizeCellCapacity(int cellNumber, int factor
                        });
   Kokkos::fence();
   cells[cellNumber].~CellViewType();
-  new(&cells[cellNumber]) CellViewType(Kokkos::view_alloc(label, Kokkos::WithoutInitializing), capacity);
+  new(&cells[cellNumber]) CellViewType(Kokkos::view_alloc(label, Kokkos::WithoutInitializing), newCapacity);
   Kokkos::parallel_for("write new cell " + std::to_string(cellNumber),
                        size,
                        KOKKOS_LAMBDA(int i) {
@@ -295,5 +291,4 @@ void LinkedCellsParticleContainer::resizeCellCapacity(int cellNumber, int factor
                            cells(cellNumber)(i, k) = newCell(i, k);
                          }
                        });
-  Kokkos::fence();
 }
