@@ -29,7 +29,6 @@ class Simulation {
     container = LinkedCellsParticleContainer(particles, config);
   }
 
-
   /// Starts the simulation
   void start() {
     spdlog::info("Running Simulation...");

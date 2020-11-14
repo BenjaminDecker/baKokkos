@@ -30,7 +30,8 @@ int main(int argc, char *argv[]) {
       std::cout << options.help() << std::endl;
     } else {
       // Properties from the command line
-      SimulationConfig::ContainerStructure containerStructure; /**< Represents which container structure is used to store and iterate over particles */
+      SimulationConfig::ContainerStructure
+          containerStructure; /**< Represents which container structure is used to store and iterate over particles */
       int iterations; /**< Number of iterations to simulate */
       double deltaT; /**< Length of one time step of the simulation */
       double cutoff;
@@ -52,7 +53,6 @@ int main(int argc, char *argv[]) {
         containerStructure = SimulationConfig::ContainerStructure::DirectSum;
       }
 
-
       iterations = result["iterations"].as<int>();
       deltaT = result["deltaT"].as<double>();
       cutoff = result["cutoff"].as<double>();
@@ -68,45 +68,45 @@ int main(int argc, char *argv[]) {
       if (yamlFileName) {
         YamlParser parser(yamlFileName.value());
         auto yamlIterations = parser.iterations;
-        if(yamlIterations) {
+        if (yamlIterations) {
           iterations = yamlIterations.value();
         }
         auto yamlDeltaT = parser.deltaT;
-        if(yamlDeltaT) {
+        if (yamlDeltaT) {
           deltaT = yamlDeltaT.value();
         }
         auto yamlCutoff = parser.cutoff;
-        if(yamlCutoff) {
+        if (yamlCutoff) {
           cutoff = yamlCutoff.value();
         }
         auto yamlBox = parser.box;
-        if(yamlBox) {
+        if (yamlBox) {
           box = yamlBox.value();
         }
         auto yamlVtkFileName = parser.vtkFileName;
-        if(yamlVtkFileName) {
+        if (yamlVtkFileName) {
           vtkFileName = yamlVtkFileName.value();
         }
         auto yamlVtkWriteFrequency = parser.vtkWriteFrequency;
-        if(yamlVtkWriteFrequency) {
+        if (yamlVtkWriteFrequency) {
           vtkWriteFrequency = yamlVtkWriteFrequency.value();
         }
         for (auto &cuboid : parser.particleCuboids) {
-          for(auto &newParticle : cuboid.getParticles(particles.size())) {
+          for (auto &newParticle : cuboid.getParticles(particles.size())) {
             particles.push_back(newParticle);
           }
         }
         for (auto &sphere : parser.particleSpheres) {
-          for(auto &newParticle : sphere.getParticles(particles.size())) {
+          for (auto &newParticle : sphere.getParticles(particles.size())) {
             particles.push_back(newParticle);
           }
         }
       }
 
-
       // TODO add particles from command line. For now it is only possible to add particles from .yaml files
 
-      const SimulationConfig config(containerStructure, iterations, deltaT, cutoff, box, vtkFileName, vtkWriteFrequency, yamlFileName);
+      const SimulationConfig
+          config(containerStructure, iterations, deltaT, cutoff, box, vtkFileName, vtkWriteFrequency, yamlFileName);
 
       Simulation simulation = Simulation(config, particles);
       simulation.start();

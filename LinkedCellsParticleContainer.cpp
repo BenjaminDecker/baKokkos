@@ -173,9 +173,6 @@ void LinkedCellsParticleContainer::iterateCalculateForces() const {
           const double forceValue =
               (twentyFourEpsilonSigmaPow6 * distanceValuePow6 - fourtyEightEpsilonSigmaPow12) / distanceValuePow13;
           force += (distance * (forceValue / distanceValue));
-          if(forceValue != forceValue) {
-            std::cout << force << "\t" << forceValue << "\t" << distanceValue << "\t" << distance << "\t" << id_1 << "\t" << id_2 << "\t" << cellIndex << "\t" << neighbourCellIndex << std::endl;
-          }
         }
       }
       // Save previous forces
