@@ -46,21 +46,9 @@ class Simulation {
       if (iteration % 1000 == 0) {
         spdlog::info("Iteration: {:0" + std::to_string(std::to_string(config.iterations).length()) + "d}", iteration);
       }
-      Kokkos::Timer posTimer;
       container.iterateCalculatePositions(config.deltaT);
-      const double posTime = posTimer.seconds();
-      spdlog::info("posTimer: " + std::to_string(posTime));
-
-      Kokkos::Timer forceTimer;
       container.iterateCalculateForces();
-      const double forceTime = forceTimer.seconds();
-      spdlog::info("forceTimer: " + std::to_string(forceTime));
-
-      Kokkos::Timer vTimer;
       container.iterateCalculateVelocities(config.deltaT);
-      const double vTime = vTimer.seconds();
-      spdlog::info("vTimer: " + std::to_string(vTime));
-      std::cout << std::endl;
     }
 
     const double time = timer.seconds();
