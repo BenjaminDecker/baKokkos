@@ -1,27 +1,28 @@
+////
+//// Created by Benjamin Decker on 16/10/2020.
+////
 //
-// Created by Benjamin Decker on 16/10/2020.
+//#pragma once
 //
-
-#pragma once
-
-#include <Kokkos_Core.hpp>
-#include <vector>
-#include "ParticleContainer.h"
-#include "Coord3D.h"
-#include "Particle.h"
-#include "YamlParser.h"
-
-/**
- * @brief Uses no special layout. Computations are simple, but performance is bad.
- *
- * Trivial layout approach. Every particle is saved inside the same Kokkos::View.
- * Iterating over the particles is simple, but there is no easy way to filter out particle pairs that are further apart
- * from another than the cutoff distance.
- * This layout should only be used if the simulation contains only a handful of particles, as the time complexity for
- * the force calculation grows with O(n^2).
- *
- * @see Particle, Coord3D
- */
+//#include <Kokkos_Core.hpp>
+//#include <vector>
+//#include "ParticleContainer.h"
+//#include "Coord3D.h"
+//#include "Particle.h"
+//#include "YamlParser.h"
+//#include "SimulationConfig.h"
+//
+///**
+// * @brief Uses no special layout. Computations are simple, but performance is bad.
+// *
+// * Trivial layout approach. Every particle is saved inside the same Kokkos::View.
+// * Iterating over the particles is simple, but there is no easy way to filter out particle pairs that are further apart
+// * from another than the cutoff distance.
+// * This layout should only be used if the simulation contains only a handful of particles, as the time complexity for
+// * the force calculation grows with O(n^2).
+// *
+// * @see Particle, Coord3D
+// */
 //class DirectSumParticleContainer {
 // public:
 //  int size;
@@ -35,7 +36,7 @@
 //   * @brief Initialises particles
 //   * @param parser stores particle information from a .yaml file
 //   */
-//  explicit DirectSumParticleContainer(const YamlParser &parser);
+//  explicit DirectSumParticleContainer(const std::vector<Particle> &particles, const SimulationConfig &config);
 //  DirectSumParticleContainer() = default;
 //
 //  /// Creates a Particle from the particle information in device memory with the specified id.

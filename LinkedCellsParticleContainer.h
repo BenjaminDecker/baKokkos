@@ -90,8 +90,8 @@ class LinkedCellsParticleContainer {
    * @brief Initialises particles
    * @param parser stores particle information from a .yaml file
    */
-  explicit LinkedCellsParticleContainer(std::vector<Particle> &particles, SimulationConfig &config);
-  void addParticle(const Particle &particle);
+  explicit LinkedCellsParticleContainer(const std::vector<Particle> &particles, const SimulationConfig &config);
+  void addParticle(const Particle &particle) const;
   [[nodiscard]] std::vector<Particle> getParticles() const;
   [[nodiscard]] std::vector<Particle> getParticles(int cellNumber) const;
   void iterateCalculatePositions(double deltaT) const;
@@ -101,9 +101,9 @@ class LinkedCellsParticleContainer {
   void writeVTKFile(int iteration, int maxIterations, const std::string &fileName) const;
 
  private:
-  [[nodiscard]] int getIndexOf(int x, int y, int z) const;
-  [[nodiscard]] std::array<int, 3> getCoordinates(int cellNumber) const;
-  [[nodiscard]] std::vector<int> getNeighbourCellNumbers(int cellNumber);
+  [[nodiscard]] int getCellNumber(int x, int y, int z) const;
+  [[nodiscard]] std::array<int, 3> getRelativeCellCoordinates(int cellNumber) const;
+  [[nodiscard]] std::vector<int> getNeighbourCellNumbers(int cellNumber) const;
   void resizeCellCapacity(int cellNumber, int factor) const;
   int getCorrectCellNumber(const Particle &particle) const;
   void moveParticle(int particleIndex, int fromCell, int toCell) const;

@@ -7,7 +7,7 @@
 #include <iomanip>
 #include <fstream>
 
-LinkedCellsParticleContainer::LinkedCellsParticleContainer(std::vector<Particle> &particles, SimulationConfig &config)
+LinkedCellsParticleContainer::LinkedCellsParticleContainer(const std::vector<Particle> &particles, const SimulationConfig &config)
     : cutoff(config.cutoff), vtkFilename(config.vtkFileName) {
   spdlog::info("Initializing particles...");
   Kokkos::Timer timer;
@@ -37,9 +37,9 @@ LinkedCellsParticleContainer::LinkedCellsParticleContainer(std::vector<Particle>
   }
 
   Coord3D boxSize = boxMax - boxMin;
-  numCellsX = static_cast<int>(boxSize.x / cutoff);
-  numCellsY = static_cast<int>(boxSize.y / cutoff);
-  numCellsZ = static_cast<int>(boxSize.z / cutoff);
+  numCellsX = std::max(1, static_cast<int>(boxSize.x / cutoff));
+  numCellsY = std::max(1, static_cast<int>(boxSize.y / cutoff));
+  numCellsZ = std::max(1, static_cast<int>(boxSize.z / cutoff));
   numCells = numCellsX * numCellsY * numCellsZ;
 
   sizesAndCapacities = SizesAndCapacitiesType("sizedAndCapacities", numCells);
@@ -76,7 +76,7 @@ LinkedCellsParticleContainer::LinkedCellsParticleContainer(std::vector<Particle>
                    + std::to_string(time) + " seconds.");
 }
 
-void LinkedCellsParticleContainer::addParticle(const Particle &particle) {
+void LinkedCellsParticleContainer::addParticle(const Particle &particle) const {
   const int cellNumber = getCorrectCellNumber(particle);
   if (0 <= cellNumber && cellNumber < numCells) {
     if (sizesAndCapacities(cellNumber, 0) == sizesAndCapacities(cellNumber, 1)) {
@@ -145,23 +145,23 @@ void LinkedCellsParticleContainer::iterateCalculateForces() const {
   // Iterate over each cell in parallel
   Kokkos::parallel_for("iterateCalculateForces", numCells, KOKKOS_LAMBDA(int cellIndex) {
     // Get the number of particles in current cell
-    const int numParticles1 = sizesAndCapacities(cellIndex, 0);
+    const int numParticles = sizesAndCapacities(cellIndex, 0);
     // Iterate over every particle in current cell
-    for (int id_1 = 0; id_1 < numParticles1; ++id_1) {
+    for (int id_1 = 0; id_1 < numParticles; ++id_1) {
       // Force accumulator
       Coord3D force = Coord3D();
       // Iterate over the amount of possible neighbour cells
-      for (int neighbourCellNumber = 0; neighbourCellNumber < 27; ++neighbourCellNumber) {
+      for (int neighbour = 0; neighbour < 27; ++neighbour) {
         // Get the index into the cells view of the current neighbour cell
-        const int neighbourCellIndex = neighbours(cellIndex, neighbourCellNumber);
-        // Test if the neighbour exists, or if the current cell is a boundary cell
-        if (neighbourCellIndex < 0) {
+        const int neighbourCellIndex = neighbours(cellIndex, neighbour);
+        // Test if the neighbour exists
+        if (neighbourCellIndex == -1) {
           continue;
         }
         // Get the number of particles in the current neighbour cell
-        const int numParticles2 = sizesAndCapacities(neighbourCellIndex, 0);
+        const int numParticlesNeighbour = sizesAndCapacities(neighbourCellIndex, 0);
         // Iterate over every particle of the neighbour cell
-        for (int id_2 = 0; id_2 < numParticles2; ++id_2) {
+        for (int id_2 = 0; id_2 < numParticlesNeighbour; ++id_2) {
           // Test if the current particle is the same as the accumulator particle
           if (cellIndex == neighbourCellIndex && id_1 == id_2) {
             continue;
@@ -211,7 +211,10 @@ void LinkedCellsParticleContainer::moveParticles() const {
       if (cellNumber == correctCellNumber) {
         continue;
       }
-
+      moveParticle(particleIndex, cellNumber, correctCellNumber);
+      particles[particleIndex] = particles[particles.size() - 1];
+      particles.pop_back();
+      --particleIndex;
     }
   }
 }
@@ -271,22 +274,22 @@ void LinkedCellsParticleContainer::writeVTKFile(int iteration, int maxIterations
   }
   vtkFile << std::endl;
 
-  // print TypeIDs
+  // print ParticleIDs
   vtkFile << "SCALARS particleIds int" << std::endl;
   vtkFile << "LOOKUP_TABLE default" << std::endl;
   for (int i = 0; i < particles.size(); ++i) {
-    vtkFile << i << std::endl;
+    vtkFile << particles[i].particleID << std::endl;
   }
   vtkFile << std::endl;
   vtkFile.close();
 
 }
 
-int LinkedCellsParticleContainer::getIndexOf(int x, int y, int z) const {
+int LinkedCellsParticleContainer::getCellNumber(int x, int y, int z) const {
   return z * numCellsX * numCellsY + y * numCellsX + x;
 }
 
-std::array<int, 3> LinkedCellsParticleContainer::getCoordinates(int cellNumber) const {
+std::array<int, 3> LinkedCellsParticleContainer::getRelativeCellCoordinates(int cellNumber) const {
   int z = cellNumber / (numCellsX * numCellsY);
   cellNumber -= z * (numCellsX * numCellsY);
   int y = cellNumber / numCellsX;
@@ -294,14 +297,14 @@ std::array<int, 3> LinkedCellsParticleContainer::getCoordinates(int cellNumber) 
   return {cellNumber, y, z};
 }
 
-std::vector<int> LinkedCellsParticleContainer::getNeighbourCellNumbers(int cellNumber) {
+std::vector<int> LinkedCellsParticleContainer::getNeighbourCellNumbers(int cellNumber) const{
   std::vector<int> neighbourNumbers;
-  auto coords = getCoordinates(cellNumber);
-  for (int x = coords[0] - 1; x < coords[0] + 1; ++x) {
-    for (int y = coords[1] - 1; y < coords[1] + 1; ++y) {
-      for (int z = coords[2] - 1; z < coords[2] + 1; ++z) {
+  auto coords = getRelativeCellCoordinates(cellNumber);
+  for (int x = coords[0] - 1; x <= coords[0] + 1; ++x) {
+    for (int y = coords[1] - 1; y <= coords[1] + 1; ++y) {
+      for (int z = coords[2] - 1; z <= coords[2] + 1; ++z) {
         if (0 <= x && x < numCellsX && 0 <= y && y < numCellsY && 0 <= z && z < numCellsZ) {
-          neighbourNumbers.push_back(getIndexOf(x, y, z));
+          neighbourNumbers.push_back(getCellNumber(x, y, z));
         }
       }
     }
@@ -335,10 +338,11 @@ void LinkedCellsParticleContainer::resizeCellCapacity(int cellNumber, int factor
 }
 int LinkedCellsParticleContainer::getCorrectCellNumber(const Particle &particle) const {
   const Coord3D cellPosition = (particle.position - boxMin) / cutoff;
-  return getIndexOf(static_cast<int>(cellPosition.x),
-                    static_cast<int>(cellPosition.y),
-                    static_cast<int>(cellPosition.z));
+  return getCellNumber(static_cast<int>(cellPosition.x),
+                       static_cast<int>(cellPosition.y),
+                       static_cast<int>(cellPosition.z));
 }
+
 void LinkedCellsParticleContainer::moveParticle(int particleIndex, int fromCell, int toCell) const {
   if (sizesAndCapacities(toCell, 0) == sizesAndCapacities(toCell, 1)) {
     resizeCellCapacity(toCell, 2);

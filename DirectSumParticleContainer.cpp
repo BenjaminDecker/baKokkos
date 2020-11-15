@@ -3,9 +3,8 @@
 //
 
 #include "DirectSumParticleContainer.h"
-
 /*
-DirectSumParticleContainer::DirectSumParticleContainer(const YamlParser &parser) {
+DirectSumParticleContainer::DirectSumParticleContainer(const std::vector<Particle> &particles, const SimulationConfig &config) {
   std::vector<std::vector<Particle>> cuboids;
   std::vector<std::vector<Particle>> spheres;
 

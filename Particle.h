@@ -34,6 +34,7 @@ struct Particle {
   KOKKOS_INLINE_FUNCTION
   Particle(int particleID, int typeID, Coord3D position, Coord3D force, Coord3D velocity, Coord3D oldForce)
       : particleID(particleID), typeID(typeID), position(position), force(force), velocity(velocity), oldForce(oldForce) {}
+
 };
 
 
