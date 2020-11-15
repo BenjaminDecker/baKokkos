@@ -17,7 +17,8 @@
  *
  * @see ParticleContainer
  */
-struct Coord3D {
+class Coord3D {
+ public:
   double x, y, z;
 
   /// The default contructor must be explicitly declared to have the KOKKOS_INLINE_FUNCTION annotation.

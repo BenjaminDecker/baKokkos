@@ -7,7 +7,8 @@
 #include <optional>
 #include "Coord3D.h"
 
-struct SimulationConfig {
+class SimulationConfig {
+ public:
   const enum ContainerStructure { DirectSum, LinkedCells }
       containerStructure; /**< Represents which container structure is used to store and iterate over particles */
   const int iterations; /**< Number of iterations to simulate */

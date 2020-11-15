@@ -13,7 +13,8 @@
  *
  * @see ParticleContainer, Coord3D
  */
-struct Particle {
+class Particle {
+ public:
   int particleID; /**< Unique particle identifier */
   int typeID; /**< Type identifier for looking up further particle properties */
   Coord3D position; /**< 3-dimensional position vector */
