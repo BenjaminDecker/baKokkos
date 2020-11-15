@@ -26,6 +26,7 @@ class Simulation {
   const double fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
 
   explicit Simulation(SimulationConfig config, std::vector<Particle> &particles) : config(std::move(config)) {
+    std::cout << "Using the following simulation configuration:" << std::endl << std::endl << config << std::endl;
     container = LinkedCellsParticleContainer(particles, config);
   }
 
@@ -48,6 +49,7 @@ class Simulation {
       container.iterateCalculatePositions(config.deltaT);
       container.iterateCalculateForces();
       container.iterateCalculateVelocities(config.deltaT);
+      container.moveParticles();
     }
 
     const double time = timer.seconds();

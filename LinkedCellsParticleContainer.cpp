@@ -77,17 +77,14 @@ LinkedCellsParticleContainer::LinkedCellsParticleContainer(std::vector<Particle>
 }
 
 void LinkedCellsParticleContainer::addParticle(const Particle &particle) {
-  Coord3D cellPosition = (particle.position - boxMin) / cutoff;
-  int cellNumber = getIndexOf(static_cast<int>(cellPosition.x),
-                              static_cast<int>(cellPosition.y),
-                              static_cast<int>(cellPosition.z));
+  const int cellNumber = getCorrectCellNumber(particle);
   if (0 <= cellNumber && cellNumber < numCells) {
     if (sizesAndCapacities(cellNumber, 0) == sizesAndCapacities(cellNumber, 1)) {
       resizeCellCapacity(cellNumber, 2);
     }
 
     Kokkos::parallel_for("addParticle", 1, KOKKOS_LAMBDA(int i) {
-      int index = sizesAndCapacities(cellNumber, 0);
+      const int index = sizesAndCapacities(cellNumber, 0);
       cells(cellNumber)(index, ParticleIndices::position) = particle.position;
       cells(cellNumber)(index, ParticleIndices::velocity) = particle.velocity;
       cells(cellNumber)(index, ParticleIndices::force) = particle.force;
@@ -101,17 +98,25 @@ void LinkedCellsParticleContainer::addParticle(const Particle &particle) {
 std::vector<Particle> LinkedCellsParticleContainer::getParticles() const {
   std::vector<Particle> particles;
   for (int cellNumber = 0; cellNumber < numCells; ++cellNumber) {
-    auto h_particles = Kokkos::create_mirror_view(cells(cellNumber));
-    const int numParticles = sizesAndCapacities(cellNumber, 0);
-    for (int particleNumber = 0; particleNumber < numParticles; ++particleNumber) {
-      Coord3D particleIDAndTypeID(h_particles(particleNumber, ParticleIndices::particleIDAndTypeID));
-      particles.emplace_back(particleIDAndTypeID.x,
-                             particleIDAndTypeID.y,
-                             h_particles(particleNumber, ParticleIndices::position),
-                             h_particles(particleNumber, ParticleIndices::force),
-                             h_particles(particleNumber, ParticleIndices::velocity),
-                             h_particles(particleNumber, ParticleIndices::oldForce));
+    for (auto &particle : getParticles(cellNumber)) {
+      particles.push_back(particle);
     }
+  }
+  return particles;
+}
+
+std::vector<Particle> LinkedCellsParticleContainer::getParticles(int cellNumber) const {
+  std::vector<Particle> particles;
+  auto h_particles = Kokkos::create_mirror_view(cells(cellNumber));
+  const int numParticles = sizesAndCapacities(cellNumber, 0);
+  for (int particleNumber = 0; particleNumber < numParticles; ++particleNumber) {
+    Coord3D particleIDAndTypeID(h_particles(particleNumber, ParticleIndices::particleIDAndTypeID));
+    particles.emplace_back(particleIDAndTypeID.x,
+                           particleIDAndTypeID.y,
+                           h_particles(particleNumber, ParticleIndices::position),
+                           h_particles(particleNumber, ParticleIndices::force),
+                           h_particles(particleNumber, ParticleIndices::velocity),
+                           h_particles(particleNumber, ParticleIndices::oldForce));
   }
   return particles;
 }
@@ -198,8 +203,21 @@ void LinkedCellsParticleContainer::iterateCalculateVelocities(double deltaT) con
   });
 }
 
+void LinkedCellsParticleContainer::moveParticles() const {
+  for (int cellNumber = 0; cellNumber < numCells; ++cellNumber) {
+    auto particles = getParticles(cellNumber);
+    for (int particleIndex = 0; particleIndex < particles.size(); ++particleIndex) {
+      const int correctCellNumber = getCorrectCellNumber(particles[particleIndex]);
+      if (cellNumber == correctCellNumber) {
+        continue;
+      }
+
+    }
+  }
+}
+
 void LinkedCellsParticleContainer::writeVTKFile(int iteration, int maxIterations, const std::string &fileName) const {
-  std::string fileBaseName("baKokkos");
+  const std::string fileBaseName("baKokkos");
   std::ostringstream strstr;
   auto maxNumDigits = std::to_string(maxIterations).length();
   std::vector<Particle> particles = getParticles();
@@ -314,4 +332,29 @@ void LinkedCellsParticleContainer::resizeCellCapacity(int cellNumber, int factor
                            cells(cellNumber)(i, k) = newCell(i, k);
                          }
                        });
+}
+int LinkedCellsParticleContainer::getCorrectCellNumber(const Particle &particle) const {
+  const Coord3D cellPosition = (particle.position - boxMin) / cutoff;
+  return getIndexOf(static_cast<int>(cellPosition.x),
+                    static_cast<int>(cellPosition.y),
+                    static_cast<int>(cellPosition.z));
+}
+void LinkedCellsParticleContainer::moveParticle(int particleIndex, int fromCell, int toCell) const {
+  if (sizesAndCapacities(toCell, 0) == sizesAndCapacities(toCell, 1)) {
+    resizeCellCapacity(toCell, 2);
+  }
+  const std::string label = "moveParticle " + std::to_string(particleIndex)
+      + " from cell " + std::to_string(fromCell) + " to cell " + std::to_string(toCell);
+  Kokkos::parallel_for(label, 1, KOKKOS_LAMBDA(int i) {
+    const int destinationCellSize = sizesAndCapacities(toCell, 0);
+    for (int j = 0; j < 5; ++j) {
+      cells(toCell)(destinationCellSize, j) = cells(fromCell)(particleIndex, j);
+    }
+    ++sizesAndCapacities(toCell, 0);
+    --sizesAndCapacities(fromCell, 0);
+    const int departureCellSize = sizesAndCapacities(fromCell, 0);
+    for (int j = 0; j < 5; ++j) {
+      cells(fromCell)(particleIndex, j) = cells(fromCell)(departureCellSize, j);
+    }
+  });
 }

@@ -5,6 +5,7 @@
 #pragma once
 
 #include <Kokkos_Core.hpp>
+#include <iostream>
 
 /**
  * @brief A 3D coordinate struct designed to be used inside a Kokkos::View.
@@ -146,9 +147,6 @@ struct Coord3D {
 
 /**
  * Operator definition for convenient printing of a Coord3D object to a Stream.
- * @example
- * Coord3D coord();
- * std::cout << coord << std::endl;
  */
 KOKKOS_INLINE_FUNCTION
 std::ostream &operator<<(std::ostream &stream, const Coord3D &obj) {

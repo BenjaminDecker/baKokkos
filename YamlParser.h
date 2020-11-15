@@ -22,15 +22,26 @@ class YamlParser {
   std::optional<std::pair<Coord3D, Coord3D>> box;
   std::optional<std::string> vtkFileName;
   std::optional<int> vtkWriteFrequency;
-  std::optional<std::string> yamlFileName;
   std::vector<ParticleCuboid> particleCuboids; /**< Cuboids that could be read from the .yamlFile */
   std::vector<ParticleSphere> particleSpheres; /**< Spheres that could be read from the .yamlFile */
 
   explicit YamlParser(const std::string &fileName) {
     YAML::Node config = YAML::LoadFile(fileName);
 
+    if(config["iterations"]) {
+      iterations = config["iterations"].as<int>();
+    }
+    if(config["deltaT"]) {
+      deltaT = config["deltaT"].as<double>();
+    }
     if(config["cutoff"]) {
       cutoff = config["cutoff"].as<double>();
+    }
+    if(config["vtk-filename"]) {
+      vtkFileName = config["vtk-filename"].as<std::string>();
+    }
+    if(config["vtk-write-frequency"]) {
+      vtkWriteFrequency = config["vtk-write-frequency"].as<int>();
     }
     if(config["box-min"] && config["box-max"]) {
       Coord3D boxMin = Coord3D(config["box-min"][0].as<double>(),

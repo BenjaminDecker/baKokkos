@@ -37,5 +37,28 @@ struct SimulationConfig {
         yamlFileName(yaml_file_name) {}
 };
 
-
-
+static std::ostream &operator<<(std::ostream &stream, const SimulationConfig &obj) {
+  stream << "ContainerStructure: ";
+  switch (obj.containerStructure) {
+    case SimulationConfig::DirectSum:
+      stream << "DirectSum";
+      break;
+    case SimulationConfig::LinkedCells:
+      stream << "LinkedCells";
+      break;
+  }
+  stream << std::endl;
+  stream << "iterations: " << obj.iterations << std::endl;
+  stream << "deltaT: " << obj.deltaT << std::endl;
+  stream << "cutoff: " << obj.cutoff << std::endl;
+  if(obj.box) {
+    stream << "box:" << std::endl;
+    stream << "  box-min: " << obj.box.value().first << std::endl;
+    stream << "  box-max: " << obj.box.value().second << std::endl;
+  }
+  if(obj.vtkFileName) {
+    stream << "vtk-filename: " << obj.vtkFileName.value() << ".vtk" << std::endl;
+    stream << "vtk-write-frequency: " << obj.vtkWriteFrequency << std::endl;
+  }
+  return stream;
+}
