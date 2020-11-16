@@ -3,7 +3,7 @@
 #include <cxxopts.hpp>
 #include <spdlog/spdlog.h>
 #include <optional>
-#include "YamlParser.h"
+#include "Yaml/YamlParser.h"
 #include "Simulation.h"
 
 int main(int argc, char *argv[]) {

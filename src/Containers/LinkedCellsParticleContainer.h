@@ -6,7 +6,7 @@
 
 #include <array>
 #include "Particle.h"
-#include "SimulationConfig.h"
+#include "../SimulationConfig.h"
 
 #ifdef KOKKOS_ENABLE_CUDA
 /**

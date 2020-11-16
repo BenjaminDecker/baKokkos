@@ -5,7 +5,7 @@
 #pragma once
 
 #include <optional>
-#include "Coord3D.h"
+#include "Containers/Coord3D.h"
 
 class SimulationConfig {
  public:

@@ -7,7 +7,7 @@
 #include <vector>
 #include <yaml-cpp/yaml.h>
 #include <optional>
-#include "Coord3D.h"
+#include "../Containers/Coord3D.h"
 #include "ParticleCuboid.h"
 #include "ParticleSphere.h"
 #include "CubeClosestPacked.h"
