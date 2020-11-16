@@ -15,7 +15,7 @@ int main(int argc, char *argv[]) {
         ("help", "Display this message")
         ("containerStructure",
          "Container structure that is used to store and iterate over particles. Possible values: (DirectSum LinkedCells).",
-         cxxopts::value<std::string>()->default_value("DirectSum"))
+         cxxopts::value<std::string>()->default_value("LinkedCells"))
         ("iterations", "Number of iterations to simulate", cxxopts::value<int>()->default_value("100000"))
         ("deltaT", "Length of one time step of the simulation", cxxopts::value<double>()->default_value("0.000002"))
         ("cutoff", "Lennard-Jones force cutoff", cxxopts::value<double>()->default_value("3"))
