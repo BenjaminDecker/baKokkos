@@ -25,7 +25,14 @@ FetchContent_Declare(
         GIT_TAG "v1.8.1"
 )
 FetchContent_MakeAvailable(kokkos yaml-cpp cxxopts spdlog)
-add_executable(baKokkos src/main.cpp src/Containers/DirectSumParticleContainer.cpp src/Containers/DirectSumParticleContainer.h src/Containers/ParticlePropertiesLibrary.cpp src/Containers/ParticlePropertiesLibrary.h src/Containers/Coord3D.h src/Containers/Particle.h src/Yaml/YamlParser.cpp src/Yaml/YamlParser.h src/Yaml/ParticleGroup.h src/Simulation.h src/Containers/ParticleContainer.h src/Containers/LinkedCellsParticleContainer.cpp src/Containers/LinkedCellsParticleContainer.h src/SimulationConfig.h src/Yaml/ParticleCuboid.h src/Yaml/ParticleSphere.h src/Yaml/CubeClosestPacked.h)
+
+file(
+        GLOB_RECURSE
+        baKokkos_SRC
+        "src/*.cpp"
+        "src/*.h"
+)
+add_executable(baKokkos ${baKokkos_SRC})
 target_link_libraries(baKokkos kokkos yaml-cpp cxxopts spdlog)
 
 include(doxygen.cmake)
