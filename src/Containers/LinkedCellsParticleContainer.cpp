@@ -7,7 +7,8 @@
 #include <iomanip>
 #include <fstream>
 
-LinkedCellsParticleContainer::LinkedCellsParticleContainer(const std::vector<Particle> &particles, const SimulationConfig &config)
+LinkedCellsParticleContainer::LinkedCellsParticleContainer(const std::vector<Particle> &particles,
+                                                           const SimulationConfig &config)
     : cutoff(config.cutoff), vtkFilename(config.vtkFileName) {
   spdlog::info("Initializing particles...");
   Kokkos::Timer timer;
@@ -70,6 +71,27 @@ LinkedCellsParticleContainer::LinkedCellsParticleContainer(const std::vector<Par
     }
   }
   Kokkos::deep_copy(neighbours, h_neighbours);
+
+  std::vector<std::vector<int>> c08baseCellsVec;
+  c08baseCellsVec.resize(8);
+  for (int x = 0; x < numCellsX; ++x) {
+    for (int y = 0; y < numCellsY; ++y) {
+      for (int z = 0; z < numCellsZ; ++z) {
+        int cellNumber = getCellNumber(x, y, z);
+        c08baseCellsVec[getCellColor(cellNumber)].push_back(cellNumber);
+      }
+    }
+  }
+
+  for (int i = 0; i < c08baseCells.size(); ++i) {
+    int size = c08baseCellsVec[i].size();
+    c08baseCells[i] = Kokkos::View<int*>("c08baseCells " + std::to_string(i), size);
+    auto h_c08BaseCells = Kokkos::create_mirror_view(c08baseCells[i]);
+    for (int k = 0; k < size; ++k) {
+      h_c08BaseCells(k) = c08baseCellsVec[i][k];
+    }
+    Kokkos::deep_copy(c08baseCells[i], h_c08BaseCells);
+  }
 
   const double time = timer.seconds();
   spdlog::info("Finished initializing " + std::to_string(particles.size()) + " particles. Time: "
@@ -188,6 +210,10 @@ void LinkedCellsParticleContainer::iterateCalculateForces() const {
   });
 }
 
+void LinkedCellsParticleContainer::iterateCalculateForcesNewton3() const {
+  
+}
+
 void LinkedCellsParticleContainer::iterateCalculateVelocities(double deltaT) const {
 
   //TODO get from particlePropertiesLibrary
@@ -297,7 +323,7 @@ std::array<int, 3> LinkedCellsParticleContainer::getRelativeCellCoordinates(int 
   return {cellNumber, y, z};
 }
 
-std::vector<int> LinkedCellsParticleContainer::getNeighbourCellNumbers(int cellNumber) const{
+std::vector<int> LinkedCellsParticleContainer::getNeighbourCellNumbers(int cellNumber) const {
   std::vector<int> neighbourNumbers;
   auto coords = getRelativeCellCoordinates(cellNumber);
   for (int x = coords[0] - 1; x <= coords[0] + 1; ++x) {
@@ -361,4 +387,9 @@ void LinkedCellsParticleContainer::moveParticle(int particleIndex, int fromCell,
       cells(fromCell)(particleIndex, j) = cells(fromCell)(departureCellSize, j);
     }
   });
+}
+
+int LinkedCellsParticleContainer::getCellColor(int cellNumber) const {
+  auto coords = getRelativeCellCoordinates(cellNumber);
+  return (coords[0] % 2 == 0 ? 0 : 1) + (coords[1] % 2 == 0 ? 0 : 2) + (coords[2] % 2 == 0 ? 0 : 4);
 }

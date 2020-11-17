@@ -84,6 +84,8 @@ class LinkedCellsParticleContainer {
   double cutoff{};
   std::optional<std::string> vtkFilename;
 
+  std::array<Kokkos::View<int*>, 8> c08baseCells;
+
   LinkedCellsParticleContainer() = default;
 
   /**
@@ -96,6 +98,7 @@ class LinkedCellsParticleContainer {
   [[nodiscard]] std::vector<Particle> getParticles(int cellNumber) const;
   void iterateCalculatePositions(double deltaT) const;
   void iterateCalculateForces() const;
+  void iterateCalculateForcesNewton3() const;
   void iterateCalculateVelocities(double deltaT) const;
   void moveParticles() const;
   void writeVTKFile(int iteration, int maxIterations, const std::string &fileName) const;
@@ -105,6 +108,7 @@ class LinkedCellsParticleContainer {
   [[nodiscard]] std::array<int, 3> getRelativeCellCoordinates(int cellNumber) const;
   [[nodiscard]] std::vector<int> getNeighbourCellNumbers(int cellNumber) const;
   void resizeCellCapacity(int cellNumber, int factor) const;
-  int getCorrectCellNumber(const Particle &particle) const;
+  [[nodiscard]] int getCorrectCellNumber(const Particle &particle) const;
   void moveParticle(int particleIndex, int fromCell, int toCell) const;
+  [[nodiscard]] int getCellColor(int cellNumber) const;
 };
