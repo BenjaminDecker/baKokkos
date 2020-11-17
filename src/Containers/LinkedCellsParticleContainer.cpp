@@ -211,7 +211,17 @@ void LinkedCellsParticleContainer::iterateCalculateForces() const {
 }
 
 void LinkedCellsParticleContainer::iterateCalculateForcesNewton3() const {
-  
+  // Save old forces
+  Kokkos::parallel_for("save old forces", numCells, KOKKOS_LAMBDA (int cellIndex) {
+    // Get the number of particles in current cell
+    const int numParticles = sizesAndCapacities(cellIndex, 0);
+    // Iterate over every particle in current cell
+    for (int id_1 = 0; id_1 < numParticles; ++id_1) {
+      // Save previous forces
+      cells(cellIndex)(id_1, ParticleIndices::oldForce) = cells(cellIndex)(id_1, ParticleIndices::force);
+    }
+  });
+  // TODO
 }
 
 void LinkedCellsParticleContainer::iterateCalculateVelocities(double deltaT) const {
