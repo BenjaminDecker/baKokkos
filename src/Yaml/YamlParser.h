@@ -21,9 +21,10 @@ class YamlParser {
   std::optional<int> iterations;
   std::optional<double> deltaT;
   std::optional<double> cutoff;
-  std::optional<std::pair<Coord3D, Coord3D>> box;
   std::optional<std::string> vtkFileName;
   std::optional<int> vtkWriteFrequency;
+  std::optional<Coord3D> globalForce;
+  std::optional<std::pair<Coord3D, Coord3D>> box;
   std::vector<ParticleCuboid> particleCuboids; /**< Cuboids that could be read from the .yamlFile */
   std::vector<ParticleSphere> particleSpheres; /**< Spheres that could be read from the .yamlFile */
   std::vector<CubeClosestPacked> cubesClosest; /**< Closest packed cubes that could be read from the .yamlFile */

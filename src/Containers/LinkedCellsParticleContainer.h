@@ -82,6 +82,7 @@ class LinkedCellsParticleContainer {
   int numCellsZ{};
   int numCells{};
   double cutoff{};
+  std::optional<Coord3D> globalForce;
   std::optional<std::string> vtkFilename;
 
   std::array<Kokkos::View<int*>, 8> c08baseCells;

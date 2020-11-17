@@ -21,6 +21,11 @@ YamlParser::YamlParser(const std::string &fileName) {
   if (config["vtk-write-frequency"]) {
     vtkWriteFrequency = config["vtk-write-frequency"].as<int>();
   }
+  if (config["globalForce"]) {
+    globalForce = Coord3D(config["globalForce"][0].as<double>(),
+                          config["globalForce"][1].as<double>(),
+                          config["globalForce"][2].as<double>());
+  }
   if (config["box-min"] && config["box-max"]) {
     Coord3D boxMin = Coord3D(config["box-min"][0].as<double>(),
                              config["box-min"][1].as<double>(),
@@ -127,13 +132,13 @@ YamlParser::YamlParser(const std::string &fileName) {
                                  boxLengthNode[2].as<double>());
 
         cubesClosest.emplace_back(typeID,
-                                     spacing,
-                                     velocity,
-                                     particleEpsilon,
-                                     particleSigma,
-                                     particleMass,
-                                     bottomLeftCorner,
-                                     boxLength);
+                                  spacing,
+                                  velocity,
+                                  particleEpsilon,
+                                  particleSigma,
+                                  particleMass,
+                                  bottomLeftCorner,
+                                  boxLength);
       }
     }
   }

@@ -9,7 +9,7 @@
 
 LinkedCellsParticleContainer::LinkedCellsParticleContainer(const std::vector<Particle> &particles,
                                                            const SimulationConfig &config)
-    : cutoff(config.cutoff), vtkFilename(config.vtkFileName) {
+    : cutoff(config.cutoff), vtkFilename(config.vtkFileName), globalForce(config.globalForce) {
   spdlog::info("Initializing particles...");
   Kokkos::Timer timer;
   if (config.box) {
@@ -205,7 +205,7 @@ void LinkedCellsParticleContainer::iterateCalculateForces() const {
       // Save previous forces
       cells(cellIndex)(id_1, ParticleIndices::oldForce) = cells(cellIndex)(id_1, ParticleIndices::force);
       // Save new force
-      cells(cellIndex)(id_1, ParticleIndices::force) = force;
+      cells(cellIndex)(id_1, ParticleIndices::force) = globalForce ? force + globalForce.value() : force;
     }
   });
 }

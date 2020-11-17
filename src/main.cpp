@@ -35,9 +35,10 @@ int main(int argc, char *argv[]) {
       int iterations; /**< Number of iterations to simulate */
       double deltaT; /**< Length of one time step of the simulation */
       double cutoff;
+      int vtkWriteFrequency; /**< Number of iterations after which a VTK file is written */
       std::optional<std::pair<Coord3D, Coord3D>> box;
       std::optional<std::string> vtkFileName; /**< Basename for all VTK output files */
-      int vtkWriteFrequency; /**< Number of iterations after which a VTK file is written */
+      std::optional<Coord3D> globalForce;
       std::optional<std::string> yamlFileName; /**< Path to the.yaml file used as input */
       std::vector<Particle> particles;
 
@@ -79,25 +80,20 @@ int main(int argc, char *argv[]) {
         if (yamlCutoff) {
           cutoff = yamlCutoff.value();
         }
-        auto yamlBox = parser.box;
-        if (yamlBox) {
-          box = yamlBox.value();
-        }
-        auto yamlVtkFileName = parser.vtkFileName;
-        if (yamlVtkFileName) {
-          vtkFileName = yamlVtkFileName.value();
-        }
         auto yamlVtkWriteFrequency = parser.vtkWriteFrequency;
         if (yamlVtkWriteFrequency) {
           vtkWriteFrequency = yamlVtkWriteFrequency.value();
         }
+        box = parser.box;
+        vtkFileName = parser.vtkFileName;
+        globalForce = parser.globalForce;
         particles = parser.getParticles();
       }
 
       // TODO add particles from command line. For now it is only possible to add particles from .yaml files
 
       const SimulationConfig
-          config(containerStructure, iterations, deltaT, cutoff, box, vtkFileName, vtkWriteFrequency, yamlFileName);
+          config(containerStructure, iterations, deltaT, cutoff, box, vtkFileName, vtkWriteFrequency, globalForce, yamlFileName);
 
       Simulation simulation = Simulation(config, particles);
       simulation.start();
