@@ -15,12 +15,15 @@
  */
 class Particle {
  public:
-  int particleID; /**< Unique particle identifier */
-  int typeID; /**< Type identifier for looking up further particle properties */
+  int particleID{}; /**< Unique particle identifier */
+  int typeID{}; /**< Type identifier for looking up further particle properties */
   Coord3D position; /**< 3-dimensional position vector */
   Coord3D force; /**< 3-dimensional force vector acting on particle */
   Coord3D oldForce; /**< 3-dimensional force vector acting on particle from the previous iteration */
   Coord3D velocity; /**< 3-dimensional velocity vector */
+
+  KOKKOS_INLINE_FUNCTION
+  Particle() = default;
 
   KOKKOS_INLINE_FUNCTION
   explicit Particle(int particleID, int typeID) : particleID(particleID), typeID(typeID) {}
@@ -37,6 +40,3 @@ class Particle {
       : particleID(particleID), typeID(typeID), position(position), force(force), velocity(velocity), oldForce(oldForce) {}
 
 };
-
-
-

@@ -25,9 +25,10 @@ class Simulation {
   const double twentyFourEpsilonSigmaPow6 = 24 * epsilon * sigmaPow6;
   const double fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
 
-  explicit Simulation(SimulationConfig config, std::vector<Particle> &particles) : config(std::move(config)) {
-    std::cout << "Using the following simulation configuration:" << std::endl << std::endl << config << std::endl;
-    container = LinkedCellsParticleContainer(particles, config);
+  explicit Simulation(SimulationConfig config, std::vector<Particle> &particles)
+      : config(std::move(config)), container(LinkedCellsParticleContainer(particles, config)) {
+    std::cout << "Using the following simulation configuration:" << std::endl << std::endl << config << std::endl
+              << std::endl;
   }
 
   /// Starts the simulation
@@ -37,25 +38,13 @@ class Simulation {
 
     //Iteration loop
     for (int iteration = 0; iteration < config.iterations; ++iteration) {
-      if (config.vtkFileName) {
-        if (iteration % config.vtkWriteFrequency == 0) {
-          container.writeVTKFile(iteration, config.iterations, config.vtkFileName.value());
-        }
-      }
-
       if (iteration % 1000 == 0) {
         spdlog::info("Iteration: {:0" + std::to_string(std::to_string(config.iterations).length()) + "d}", iteration);
       }
-      container.iterateCalculatePositions(config.deltaT);
-      container.iterateCalculateForces();
-      container.iterateCalculateVelocities(config.deltaT);
-      container.moveParticles();
+      container.doIteration();
     }
 
     const double time = timer.seconds();
     spdlog::info("Finished simulating. Time: " + std::to_string(time) + " seconds.");
   }
 };
-
-
-

@@ -26,6 +26,3 @@ class ParticleContainer {
   /// Inserts the information stored in a Particle into device memory with the specified id.
   virtual void insertParticle(const Particle &particle, int id) const = 0;
 };
-
-
-

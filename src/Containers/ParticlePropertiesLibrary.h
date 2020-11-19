@@ -30,6 +30,3 @@ class ParticlePropertiesLibrary {
     return particleProperties.at(typeID).mass;
   }
 };
-
-
-
