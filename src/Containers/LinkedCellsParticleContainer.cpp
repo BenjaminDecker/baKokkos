@@ -8,7 +8,8 @@
 #include <fstream>
 
 LinkedCellsParticleContainer::LinkedCellsParticleContainer(const std::vector<Particle> &particles,
-                                                           const SimulationConfig &config) : config(config) {
+                                                           const SimulationConfig &config)
+    : config(config), iteration(0) {
   spdlog::info("Initializing particles...");
   Kokkos::Timer timer;
   if (config.box) {
@@ -32,8 +33,8 @@ LinkedCellsParticleContainer::LinkedCellsParticleContainer(const std::vector<Par
     boxMin = Coord3D(lowestX, lowestY, lowestZ);
     boxMax = Coord3D(highestX, highestY, highestZ);
     Coord3D midPoint = (boxMin + boxMax) / 2.0;
-    boxMin = midPoint + ((boxMin - midPoint) * 2);
-    boxMax = midPoint + ((boxMax - midPoint) * 2);
+    boxMin = midPoint + ((boxMin - midPoint) * 2.0);
+    boxMax = midPoint + ((boxMax - midPoint) * 2.0);
   }
 
   Coord3D boxSize = boxMax - boxMin;
