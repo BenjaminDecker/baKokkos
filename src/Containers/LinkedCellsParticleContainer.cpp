@@ -22,6 +22,7 @@ LinkedCellsParticleContainer::LinkedCellsParticleContainer(const std::vector<Par
     double highestX = particles[0].position.x;
     double highestY = particles[0].position.y;
     double highestZ = particles[0].position.z;
+    Coord3D midPoint = Coord3D();
     for (auto &particle : particles) {
       lowestX = std::min(lowestX, particle.position.x);
       lowestY = std::min(lowestY, particle.position.y);
@@ -29,23 +30,46 @@ LinkedCellsParticleContainer::LinkedCellsParticleContainer(const std::vector<Par
       highestX = std::max(highestX, particle.position.x);
       highestY = std::max(highestY, particle.position.y);
       highestZ = std::max(highestZ, particle.position.z);
+      midPoint += particle.position;
     }
-    boxMin =
-        Coord3D(lowestX, lowestY, lowestZ) - Coord3D(config.cutoff * 1.5, config.cutoff * 1.5, config.cutoff * 1.5);
-    boxMax =
-        Coord3D(highestX, highestY, highestZ) + Coord3D(config.cutoff * 1.5, config.cutoff * 1.5, config.cutoff * 1.5);
+    midPoint *= 1.0 / particles.size();
+    boxMin = midPoint - Coord3D(config.cutoff, config.cutoff, config.cutoff);
+    boxMax = midPoint;
+    while (lowestX < boxMin.x) {
+      boxMin = boxMin - Coord3D(config.cutoff, 0, 0);
+    }
+    while (boxMax.x + config.cutoff < highestX) {
+      boxMax = boxMax + Coord3D(config.cutoff, 0, 0);
+    }
+    while (lowestY < boxMin.y) {
+      boxMin = boxMin - Coord3D(0, config.cutoff, 0);
+    }
+    while (boxMax.y + config.cutoff < highestY) {
+      boxMax = boxMax + Coord3D(0, config.cutoff, 0);
+    }
+    while (lowestZ < boxMin.z) {
+      boxMin = boxMin - Coord3D(0, 0, config.cutoff);
+    }
+    while (boxMax.z + config.cutoff < highestZ) {
+      boxMax = boxMax + Coord3D(0, 0, config.cutoff);
+    }
   }
+  boxMin = boxMin - Coord3D(config.cutoff, config.cutoff, config.cutoff);
+  boxMax = boxMax + Coord3D(config.cutoff, config.cutoff, config.cutoff);
 
-  Coord3D boxSize = boxMax - boxMin;
-  numCellsX = std::max(1, static_cast<int>(boxSize.x / config.cutoff));
-  numCellsY = std::max(1, static_cast<int>(boxSize.y / config.cutoff));
-  numCellsZ = std::max(1, static_cast<int>(boxSize.z / config.cutoff));
+  Coord3D boxSize = boxMax - boxMin + Coord3D(config.cutoff, config.cutoff, config.cutoff);
+  numCellsX = static_cast<int>((boxSize.x + 0.5 * config.cutoff) / config.cutoff);
+  numCellsY = static_cast<int>((boxSize.y + 0.5 * config.cutoff) / config.cutoff);
+  numCellsZ = static_cast<int>((boxSize.z + 0.5 * config.cutoff) / config.cutoff);
   numCells = numCellsX * numCellsY * numCellsZ;
-
-  std::cout << numCells << std::endl;
 
   cells = CellsViewType(Kokkos::view_alloc(std::string("Cells"), Kokkos::WithoutInitializing), numCells);
 
+//  for (int i = 0; i < numCells; ++i) {
+//    new(&cells[i]) Cell(1, false);
+//  }
+
+  int counter = 10000;
   for (int x = 0; x < numCellsX; ++x) {
     for (int y = 0; y < numCellsY; ++y) {
       for (int z = 0; z < numCellsZ; ++z) {
@@ -55,17 +79,13 @@ LinkedCellsParticleContainer::LinkedCellsParticleContainer(const std::vector<Par
     }
   }
 
-  for (int i = 0; i < numCells; ++i) {
-    new(&cells[i]) Cell(1, false);
-  }
-
   for (auto &particle : particles) {
     addParticle(particle);
   }
 
   neighbours = Kokkos::View<int *[27]>("neighbours", cells.size());
   auto h_neighbours = Kokkos::create_mirror_view(neighbours);
-  for (int i = 0; i < cells.size(); ++i) {
+  for (int i = 0; i < numCells; ++i) {
     std::vector<int> neighbourNumbers = getNeighbourCellNumbers(i);
     for (int k = 0; k < neighbourNumbers.size(); ++k) {
       h_neighbours(i, k) = neighbourNumbers[k];
@@ -165,6 +185,9 @@ void LinkedCellsParticleContainer::calculateForces() const {
   // Iterate over each cell in parallel
   Kokkos::parallel_for("calculateForces", numCells, KOKKOS_LAMBDA(int cellIndex) {
     auto cell = cells(cellIndex);
+    if (cell.isHaloCell) {
+      return;
+    }
     // Iterate over every particle of the cell
     for (int id_1 = 0; id_1 < cell.size; ++id_1) {
       // Iterate over the neighbours of the cell
@@ -232,32 +255,32 @@ void LinkedCellsParticleContainer::moveParticles() const {
   // TODO
   constexpr enum BoundaryCondition {
     none, periodic, reflecting
-  }condition(periodic);
+  } condition(periodic);
 
   for (int cellNumber = 0; cellNumber < numCells; ++cellNumber) {
     auto particles = cells(cellNumber).getParticles();
     for (int particleIndex = particles.size() - 1; particleIndex >= 0; --particleIndex) {
       Particle particle = particles[particleIndex];
       int correctCellNumber = getCorrectCellNumber(particle);
-      if (cellNumber != correctCellNumber) {
-        cells(cellNumber).removeParticle(particleIndex);
-        if(correctCellNumber < 0 || numCells <= correctCellNumber) {
-          continue;
+      if (cellNumber == correctCellNumber) {
+        continue;
+      }
+      cells(cellNumber).removeParticle(particleIndex);
+      if (correctCellNumber < 0 || numCells <= correctCellNumber) {
+        std::cout << "That should not happen" << std::endl;
+        continue;
+      }
+      auto &cell = cells(correctCellNumber);
+      if (cell.isHaloCell) {
+        switch (condition) {
+          case none:break;
+          case periodic:break;
+          case reflecting:
+            // TODO
+            break;
         }
-        auto cell = cells(correctCellNumber);
-        if(cell.isHaloCell) {
-          switch (condition) {
-            case none:
-              break;
-            case periodic:
-              break;
-            case reflecting:
-              // TODO
-              break;
-          }
-        } else {
-          cell.addParticle(particle);
-        }
+      } else {
+        cell.addParticle(particle);
       }
     }
   }
