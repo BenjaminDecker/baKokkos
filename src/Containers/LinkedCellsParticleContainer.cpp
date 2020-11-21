@@ -30,11 +30,10 @@ LinkedCellsParticleContainer::LinkedCellsParticleContainer(const std::vector<Par
       highestY = std::max(highestY, particle.position.y);
       highestZ = std::max(highestZ, particle.position.z);
     }
-    boxMin = Coord3D(lowestX, lowestY, lowestZ);
-    boxMax = Coord3D(highestX, highestY, highestZ);
-    Coord3D midPoint = (boxMin + boxMax) / 2.0;
-    boxMin = midPoint + ((boxMin - midPoint) * 2.0);
-    boxMax = midPoint + ((boxMax - midPoint) * 2.0);
+    boxMin =
+        Coord3D(lowestX, lowestY, lowestZ) - Coord3D(config.cutoff * 1.5, config.cutoff * 1.5, config.cutoff * 1.5);
+    boxMax =
+        Coord3D(highestX, highestY, highestZ) + Coord3D(config.cutoff * 1.5, config.cutoff * 1.5, config.cutoff * 1.5);
   }
 
   Coord3D boxSize = boxMax - boxMin;
@@ -43,9 +42,21 @@ LinkedCellsParticleContainer::LinkedCellsParticleContainer(const std::vector<Par
   numCellsZ = std::max(1, static_cast<int>(boxSize.z / config.cutoff));
   numCells = numCellsX * numCellsY * numCellsZ;
 
+  std::cout << numCells << std::endl;
+
   cells = CellsViewType(Kokkos::view_alloc(std::string("Cells"), Kokkos::WithoutInitializing), numCells);
+
+  for (int x = 0; x < numCellsX; ++x) {
+    for (int y = 0; y < numCellsY; ++y) {
+      for (int z = 0; z < numCellsZ; ++z) {
+        bool isHaloCell = x == 0 || x == numCellsX - 1 || y == 0 || y == numCellsY - 1 || z == 0 || z == numCellsZ - 1;
+        new(&cells[getCellNumberFromRelativeCellCoordinates(x, y, z)]) Cell(1, isHaloCell);
+      }
+    }
+  }
+
   for (int i = 0; i < numCells; ++i) {
-    new(&cells[i]) Cell(1);
+    new(&cells[i]) Cell(1, false);
   }
 
   for (auto &particle : particles) {
@@ -70,7 +81,7 @@ LinkedCellsParticleContainer::LinkedCellsParticleContainer(const std::vector<Par
   for (int x = 0; x < numCellsX; ++x) {
     for (int y = 0; y < numCellsY; ++y) {
       for (int z = 0; z < numCellsZ; ++z) {
-        int cellNumber = getCellNumber(x, y, z);
+        int cellNumber = getCellNumberFromRelativeCellCoordinates(x, y, z);
         c08baseCellsVec[getCellColor(cellNumber)].push_back(cellNumber);
       }
     }
@@ -217,6 +228,12 @@ void LinkedCellsParticleContainer::calculateVelocities() const {
 }
 
 void LinkedCellsParticleContainer::moveParticles() const {
+
+  // TODO
+  constexpr enum BoundaryCondition {
+    none, periodic, reflecting
+  }condition(periodic);
+
   for (int cellNumber = 0; cellNumber < numCells; ++cellNumber) {
     auto particles = cells(cellNumber).getParticles();
     for (int particleIndex = particles.size() - 1; particleIndex >= 0; --particleIndex) {
@@ -224,15 +241,29 @@ void LinkedCellsParticleContainer::moveParticles() const {
       int correctCellNumber = getCorrectCellNumber(particle);
       if (cellNumber != correctCellNumber) {
         cells(cellNumber).removeParticle(particleIndex);
-        if (0 <= correctCellNumber && correctCellNumber < numCells) {
-          cells(correctCellNumber).addParticle(particle);
+        if(correctCellNumber < 0 || numCells <= correctCellNumber) {
+          continue;
+        }
+        auto cell = cells(correctCellNumber);
+        if(cell.isHaloCell) {
+          switch (condition) {
+            case none:
+              break;
+            case periodic:
+              break;
+            case reflecting:
+              // TODO
+              break;
+          }
+        } else {
+          cell.addParticle(particle);
         }
       }
     }
   }
 }
 
-int LinkedCellsParticleContainer::getCellNumber(int x, int y, int z) const {
+int LinkedCellsParticleContainer::getCellNumberFromRelativeCellCoordinates(int x, int y, int z) const {
   return z * numCellsX * numCellsY + y * numCellsX + x;
 }
 
@@ -251,7 +282,7 @@ std::vector<int> LinkedCellsParticleContainer::getNeighbourCellNumbers(int cellN
     for (int y = coords[1] - 1; y <= coords[1] + 1; ++y) {
       for (int z = coords[2] - 1; z <= coords[2] + 1; ++z) {
         if (0 <= x && x < numCellsX && 0 <= y && y < numCellsY && 0 <= z && z < numCellsZ) {
-          neighbourNumbers.push_back(getCellNumber(x, y, z));
+          neighbourNumbers.push_back(getCellNumberFromRelativeCellCoordinates(x, y, z));
         }
       }
     }
@@ -261,9 +292,9 @@ std::vector<int> LinkedCellsParticleContainer::getNeighbourCellNumbers(int cellN
 
 int LinkedCellsParticleContainer::getCorrectCellNumber(const Particle &particle) const {
   const Coord3D cellPosition = (particle.position - boxMin) / config.cutoff;
-  return getCellNumber(static_cast<int>(cellPosition.x),
-                       static_cast<int>(cellPosition.y),
-                       static_cast<int>(cellPosition.z));
+  return getCellNumberFromRelativeCellCoordinates(static_cast<int>(cellPosition.x),
+                                                  static_cast<int>(cellPosition.y),
+                                                  static_cast<int>(cellPosition.z));
 }
 
 int LinkedCellsParticleContainer::getCellColor(int cellNumber) const {

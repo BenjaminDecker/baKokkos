@@ -78,7 +78,7 @@ class LinkedCellsParticleContainer {
   void calculateForcesNewton3() const;
   void calculateVelocities() const;
   void moveParticles() const;
-  [[nodiscard]] int getCellNumber(int x, int y, int z) const;
+  [[nodiscard]] int getCellNumberFromRelativeCellCoordinates(int x, int y, int z) const;
   [[nodiscard]] std::array<int, 3> getRelativeCellCoordinates(int cellNumber) const;
   [[nodiscard]] std::vector<int> getNeighbourCellNumbers(int cellNumber) const;
   [[nodiscard]] int getCorrectCellNumber(const Particle &particle) const;

@@ -13,6 +13,7 @@ constexpr int numNeighbours = 26;
 
 class Cell {
  public:
+  bool isHaloCell;
   int size;
   int capacity;
   Kokkos::View<Coord3D *> positions;
@@ -23,11 +24,12 @@ class Cell {
   Kokkos::View<int *> typeIDs;
 
   KOKKOS_INLINE_FUNCTION
-  Cell() : Cell(0) {};
+  Cell() : Cell(0, false) {};
 
   KOKKOS_INLINE_FUNCTION
-  explicit Cell(int capacity)
+  explicit Cell(int capacity, bool isHaloCell)
       : size(0),
+        isHaloCell(isHaloCell),
         capacity(capacity),
         positions(Kokkos::View<Coord3D *>(Kokkos::view_alloc("positions", Kokkos::WithoutInitializing), capacity)),
         velocities(Kokkos::View<Coord3D *>(Kokkos::view_alloc("velocities", Kokkos::WithoutInitializing), capacity)),
