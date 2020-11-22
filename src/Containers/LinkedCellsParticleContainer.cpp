@@ -124,9 +124,11 @@ LinkedCellsParticleContainer::LinkedCellsParticleContainer(const std::vector<Par
 
 void LinkedCellsParticleContainer::addParticle(const Particle &particle) const {
   const int cellNumber = getCorrectCellNumber(particle);
-  if (0 <= cellNumber && cellNumber < numCells) {
-    cells(cellNumber).addParticle(particle);
+  if (cellNumber < 0 || numCells <= cellNumber) {
+    std::cout << "That should not happen" << std::endl;
+    return;
   }
+  cells(cellNumber).addParticle(particle);
 }
 
 std::vector<Particle> LinkedCellsParticleContainer::getParticles() const {
@@ -257,30 +259,42 @@ void LinkedCellsParticleContainer::moveParticles() const {
     none, periodic, reflecting
   } condition(periodic);
 
-  for (int cellNumber = 0; cellNumber < numCells; ++cellNumber) {
-    auto particles = cells(cellNumber).getParticles();
-    for (int particleIndex = particles.size() - 1; particleIndex >= 0; --particleIndex) {
-      Particle particle = particles[particleIndex];
-      int correctCellNumber = getCorrectCellNumber(particle);
-      if (cellNumber == correctCellNumber) {
-        continue;
-      }
-      cells(cellNumber).removeParticle(particleIndex);
-      if (correctCellNumber < 0 || numCells <= correctCellNumber) {
-        std::cout << "That should not happen" << std::endl;
-        continue;
-      }
-      auto &cell = cells(correctCellNumber);
-      if (cell.isHaloCell) {
-        switch (condition) {
-          case none:break;
-          case periodic:break;
-          case reflecting:
-            // TODO
-            break;
+  for (int x = 0; x < numCellsX; ++x) {
+    for (int y = 0; y < numCellsY; ++y) {
+      for (int z = 0; z < numCellsZ; ++z) {
+        const int cellNumber = getCellNumberFromRelativeCellCoordinates(x, y, z);
+        const auto particles = cells(cellNumber).getParticles();
+        for (int particleIndex = particles.size() - 1; particleIndex >= 0; --particleIndex) {
+          Particle particle = particles[particleIndex];
+          const int correctCellNumber = getCorrectCellNumber(particle);
+          if (cellNumber == correctCellNumber) {
+            continue;
+          }
+          cells(cellNumber).removeParticle(particleIndex);
+          if (correctCellNumber < 0 || numCells <= correctCellNumber) {
+            std::cout << "That should not happennn" << std::endl;
+            continue;
+          }
+          auto &cell = cells(correctCellNumber);
+          if (cell.isHaloCell) {
+            switch (condition) {
+              case none:break;
+              case periodic:
+                particle.position += Coord3D(
+                    (x == 0 ? 1 : x == numCellsX - 1 ? -1 : 0) * config.cutoff * (numCellsX - 2),
+                    (y == 0 ? 1 : y == numCellsY - 1 ? -1 : 0) * config.cutoff * (numCellsY - 2),
+                    (z == 0 ? 1 : z == numCellsZ - 1 ? -1 : 0) * config.cutoff * (numCellsZ - 2)
+                );
+                addParticle(particle);
+                break;
+              case reflecting:
+                // TODO
+                break;
+            }
+          } else {
+            cell.addParticle(particle);
+          }
         }
-      } else {
-        cell.addParticle(particle);
       }
     }
   }
