@@ -191,13 +191,13 @@ void LinkedCellsParticleContainer::calculateForces() const {
 
   // Iterate over each cell in parallel
   Kokkos::parallel_for(
-      "calculateForces",
-      Kokkos::MDRangePolicy<Kokkos::Rank<3>>({1, 1, 1}, {numCellsX - 1, numCellsY - 1, numCellsZ - 1}),
-      KOKKOS_LAMBDA(const int x, const int y, const int z) {
-        const int cellIndex = getCellNumberFromRelativeCellCoordinates(x, y, z);
-        const Cell &cell = cells(cellIndex);
+      "calculateForces", numCells, KOKKOS_LAMBDA(const int cellNumber) {
+        const Cell &cell = cells(cellNumber);
+        if (cell.isHaloCell) {
+          return;
+        }
         for (int neighbour = 0; neighbour < 27; ++neighbour) {
-          int neighbourCellNumber = neighbours(cellIndex, neighbour);
+          int neighbourCellNumber = neighbours(cellNumber, neighbour);
           Coord3D offset = Coord3D();
           if (cells(neighbourCellNumber).isHaloCell) {
             switch (condition) {
