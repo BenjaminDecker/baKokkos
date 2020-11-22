@@ -65,10 +65,6 @@ LinkedCellsParticleContainer::LinkedCellsParticleContainer(const std::vector<Par
 
   cells = CellsViewType(Kokkos::view_alloc(std::string("Cells"), Kokkos::WithoutInitializing), numCells);
 
-//  for (int i = 0; i < numCells; ++i) {
-//    new(&cells[i]) Cell(1, false);
-//  }
-
   periodicTargetCellNumbers = Kokkos::View<int *>("periodicTargetCellNumbers", numCells);
 
   for (int x = 0; x < numCellsX; ++x) {
@@ -88,19 +84,6 @@ LinkedCellsParticleContainer::LinkedCellsParticleContainer(const std::vector<Par
       }
     }
   }
-
-//  for (int z = 0; z < numCellsZ; ++z) {
-//    for (int y = 0; y < numCellsY; ++y) {
-//      for (int x = 0; x < numCellsX; ++x) {
-//        const int cellNumber = getCellNumberFromRelativeCellCoordinates(x, y, z);
-//        std::cout << Coord3D(x, y, z) << std::endl;
-//        std::cout << cellNumber << std::endl;
-//        std::cout << cells(cellNumber).bottomLeftCorner << std::endl;
-//        std::cout << cells(cellNumber).isHaloCell << std::endl << std::endl;
-//      }
-//    }
-//  }
-
   for (auto &particle : particles) {
     addParticle(particle);
   }
@@ -178,7 +161,7 @@ void LinkedCellsParticleContainer::calculatePositions() const {
   //TODO get from particlePropertiesLibrary
   constexpr double mass = 1;
   Kokkos::parallel_for("calculatePositions", numCells, KOKKOS_LAMBDA(int cellNumber) {
-    auto cell = cells(cellNumber);
+    const Cell &cell = cells(cellNumber);
     for (int i = 0; i < cell.size; ++i) {
       cell.positions(i) +=
           cell.velocities(i) * config.deltaT + cell.forces(i) * ((config.deltaT * config.deltaT) / (2 * mass));
@@ -210,7 +193,7 @@ void LinkedCellsParticleContainer::calculateForces() const {
   Kokkos::parallel_for(
       "calculateForces",
       Kokkos::MDRangePolicy<Kokkos::Rank<3>>({1, 1, 1}, {numCellsX - 1, numCellsY - 1, numCellsZ - 1}),
-      KOKKOS_LAMBDA(int x, int y, int z) {
+      KOKKOS_LAMBDA(const int x, const int y, const int z) {
         const int cellIndex = getCellNumberFromRelativeCellCoordinates(x, y, z);
         const Cell &cell = cells(cellIndex);
         for (int neighbour = 0; neighbour < 27; ++neighbour) {
@@ -230,7 +213,7 @@ void LinkedCellsParticleContainer::calculateForces() const {
                 break;
             }
           }
-          Cell &neighbourCell = cells(neighbourCellNumber);
+          const Cell &neighbourCell = cells(neighbourCellNumber);
           for (int id_1 = 0; id_1 < cell.size; ++id_1) {
             for (int id_2 = 0; id_2 < neighbourCell.size; ++id_2) {
               if (cell.particleIDs(id_1) == neighbourCell.particleIDs(id_2)) {
@@ -253,24 +236,14 @@ void LinkedCellsParticleContainer::calculateForces() const {
 }
 
 void LinkedCellsParticleContainer::calculateForcesNewton3() const {
-//  // Save old forces
-//  Kokkos::parallel_for("save old forces", numCells, KOKKOS_LAMBDA(int cellIndex) {
-//    // Get the number of particles in current cell
-//    const int numParticles = sizesAndCapacities(cellIndex, 0);
-//    // Iterate over every particle in current cell
-//    for (int id_1 = 0; id_1 < numParticles; ++id_1) {
-//      // Save previous forces
-//      cells(cellIndex)(id_1, ParticleIndices::oldForce) = cells(cellIndex)(id_1, ParticleIndices::force);
-//    }
-//  });
-//  // TODO
+  // TODO
 }
 
 void LinkedCellsParticleContainer::calculateVelocities() const {
   //TODO get from particlePropertiesLibrary
   constexpr double mass = 1;
   Kokkos::parallel_for("iterateCalculateVelocities", numCells, KOKKOS_LAMBDA(int cellNumber) {
-    auto cell = cells(cellNumber);
+    const Cell &cell = cells(cellNumber);
     for (int i = 0; i < cell.size; ++i) {
       cell.velocities(i) += (cell.forces(i) + cell.oldForces(i)) * (config.deltaT / (2 * mass));
     }
