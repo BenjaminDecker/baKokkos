@@ -33,6 +33,11 @@
  */
 typedef Kokkos::View<Cell *, SharedSpace> CellsViewType;
 
+// TODO
+constexpr enum BoundaryCondition {
+  none, periodic, reflecting
+} condition(periodic);
+
 /**
  * @brief Saves particles inside of cells that make up the simulation space
  *
@@ -50,6 +55,7 @@ class LinkedCellsParticleContainer {
  public:
   CellsViewType cells; /**< Contains the linked cells that make up the simulation space */
   Kokkos::View<int *[27]> neighbours;
+  Kokkos::View<int *> periodicTargetCellNumbers;
   Coord3D boxMin;
   Coord3D boxMax;
   int numCellsX;
@@ -78,7 +84,7 @@ class LinkedCellsParticleContainer {
   void calculateForcesNewton3() const;
   void calculateVelocities() const;
   void moveParticles() const;
-  [[nodiscard]] int getCellNumberFromRelativeCellCoordinates(int x, int y, int z) const;
+  [[nodiscard]] KOKKOS_FUNCTION int getCellNumberFromRelativeCellCoordinates(int x, int y, int z) const;
   [[nodiscard]] std::array<int, 3> getRelativeCellCoordinates(int cellNumber) const;
   [[nodiscard]] std::vector<int> getNeighbourCellNumbers(int cellNumber) const;
   [[nodiscard]] int getCorrectCellNumber(const Particle &particle) const;

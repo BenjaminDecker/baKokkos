@@ -5,6 +5,7 @@
 #pragma once
 
 #include <Kokkos_Core.hpp>
+#include <vector>
 #include "Coord3D.h"
 #include "Particle.h"
 
@@ -13,9 +14,11 @@ constexpr int numNeighbours = 26;
 
 class Cell {
  public:
-  bool isHaloCell;
   int size;
   int capacity;
+
+  const bool isHaloCell;
+  const Coord3D bottomLeftCorner;
   Kokkos::View<Coord3D *> positions;
   Kokkos::View<Coord3D *> velocities;
   Kokkos::View<Coord3D *> forces;
@@ -24,12 +27,13 @@ class Cell {
   Kokkos::View<int *> typeIDs;
 
   KOKKOS_INLINE_FUNCTION
-  Cell() : Cell(0, false) {};
+  Cell() : Cell(0, false, Coord3D()) {};
 
   KOKKOS_INLINE_FUNCTION
-  explicit Cell(int capacity, bool isHaloCell)
+  Cell(int capacity, bool isHaloCell, Coord3D bottomLeftCorner)
       : size(0),
         isHaloCell(isHaloCell),
+        bottomLeftCorner(bottomLeftCorner),
         capacity(capacity),
         positions(Kokkos::View<Coord3D *>(Kokkos::view_alloc("positions", Kokkos::WithoutInitializing), capacity)),
         velocities(Kokkos::View<Coord3D *>(Kokkos::view_alloc("velocities", Kokkos::WithoutInitializing), capacity)),

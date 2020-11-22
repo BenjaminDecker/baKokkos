@@ -69,15 +69,37 @@ LinkedCellsParticleContainer::LinkedCellsParticleContainer(const std::vector<Par
 //    new(&cells[i]) Cell(1, false);
 //  }
 
-  int counter = 10000;
+  periodicTargetCellNumbers = Kokkos::View<int *>("periodicTargetCellNumbers", numCells);
+
   for (int x = 0; x < numCellsX; ++x) {
     for (int y = 0; y < numCellsY; ++y) {
       for (int z = 0; z < numCellsZ; ++z) {
         bool isHaloCell = x == 0 || x == numCellsX - 1 || y == 0 || y == numCellsY - 1 || z == 0 || z == numCellsZ - 1;
-        new(&cells[getCellNumberFromRelativeCellCoordinates(x, y, z)]) Cell(1, isHaloCell);
+        Coord3D bottomLeftCorner = boxMin + Coord3D(x, y, z) * config.cutoff;
+        const int cellNumber = getCellNumberFromRelativeCellCoordinates(x, y, z);
+        new(&cells[cellNumber]) Cell(1, isHaloCell, bottomLeftCorner);
+        const int targetX = x == 0 ? numCellsX - 2 : x == numCellsX - 1 ? 1 : x;
+        const int targetY = y == 0 ? numCellsY - 2 : y == numCellsY - 1 ? 1 : y;
+        const int targetZ = z == 0 ? numCellsZ - 2 : z == numCellsZ - 1 ? 1 : z;
+        const int periodicTargetCellNumber = getCellNumberFromRelativeCellCoordinates(targetX, targetY, targetZ);
+        Kokkos::parallel_for(1, KOKKOS_LAMBDA(int i) {
+          periodicTargetCellNumbers(cellNumber) = periodicTargetCellNumber;
+        });
       }
     }
   }
+
+//  for (int z = 0; z < numCellsZ; ++z) {
+//    for (int y = 0; y < numCellsY; ++y) {
+//      for (int x = 0; x < numCellsX; ++x) {
+//        const int cellNumber = getCellNumberFromRelativeCellCoordinates(x, y, z);
+//        std::cout << Coord3D(x, y, z) << std::endl;
+//        std::cout << cellNumber << std::endl;
+//        std::cout << cells(cellNumber).bottomLeftCorner << std::endl;
+//        std::cout << cells(cellNumber).isHaloCell << std::endl << std::endl;
+//      }
+//    }
+//  }
 
   for (auto &particle : particles) {
     addParticle(particle);
@@ -180,51 +202,54 @@ void LinkedCellsParticleContainer::calculateForces() const {
   Kokkos::parallel_for("resetForces", numCells, KOKKOS_LAMBDA(int cellNumber) {
     auto cell = cells(cellNumber);
     for (int index = 0; index < cell.size; ++index) {
-      cell.forces(index) = Coord3D();
+      cell.forces(index) = config.globalForce ? config.globalForce.value() : Coord3D();
     }
   });
 
   // Iterate over each cell in parallel
-  Kokkos::parallel_for("calculateForces", numCells, KOKKOS_LAMBDA(int cellIndex) {
-    auto cell = cells(cellIndex);
-    if (cell.isHaloCell) {
-      return;
-    }
-    // Iterate over every particle of the cell
-    for (int id_1 = 0; id_1 < cell.size; ++id_1) {
-      // Iterate over the neighbours of the cell
-      for (int neighbour = 0; neighbour < 27; ++neighbour) {
-        // Get the index into the cells view of the neighbour cell
-        const int neighbourCellIndex = neighbours(cellIndex, neighbour);
-        // Test if the neighbour exists
-        if (neighbourCellIndex == -1) {
-          continue;
-        }
-        auto neighbourCell = cells(neighbourCellIndex);
-        // Iterate over every particle of the neighbour cell
-        for (int id_2 = 0; id_2 < neighbourCell.size; ++id_2) {
-          // Skip if the two particles are the same
-          if (cell.particleIDs(id_1) == neighbourCell.particleIDs(id_2)) {
-            continue;
+  Kokkos::parallel_for(
+      "calculateForces",
+      Kokkos::MDRangePolicy<Kokkos::Rank<3>>({1, 1, 1}, {numCellsX - 1, numCellsY - 1, numCellsZ - 1}),
+      KOKKOS_LAMBDA(int x, int y, int z) {
+        const int cellIndex = getCellNumberFromRelativeCellCoordinates(x, y, z);
+        const Cell &cell = cells(cellIndex);
+        for (int neighbour = 0; neighbour < 27; ++neighbour) {
+          int neighbourCellNumber = neighbours(cellIndex, neighbour);
+          Coord3D offset = Coord3D();
+          if (cells(neighbourCellNumber).isHaloCell) {
+            switch (condition) {
+              case none:break;
+              case periodic: {
+                const int periodicTargetCellNumber = periodicTargetCellNumbers(neighbourCellNumber);
+                offset = cells(neighbourCellNumber).bottomLeftCorner - cells(periodicTargetCellNumber).bottomLeftCorner;
+                neighbourCellNumber = periodicTargetCellNumber;
+              }
+                break;
+              case reflecting:
+                // TODO
+                break;
+            }
           }
-          const Coord3D distance = cell.positions(id_1).distanceTo(neighbourCell.positions(id_2));
-          const double distanceValue = distance.absoluteValue();
-          const double distanceValuePow6 =
-              distanceValue * distanceValue * distanceValue * distanceValue * distanceValue * distanceValue;
-          const double distanceValuePow13 = distanceValuePow6 * distanceValuePow6 * distanceValue;
+          Cell &neighbourCell = cells(neighbourCellNumber);
+          for (int id_1 = 0; id_1 < cell.size; ++id_1) {
+            for (int id_2 = 0; id_2 < neighbourCell.size; ++id_2) {
+              if (cell.particleIDs(id_1) == neighbourCell.particleIDs(id_2)) {
+                continue;
+              }
+              Coord3D distance = cell.positions(id_1).distanceTo(neighbourCell.positions(id_2) + offset);
+              const double distanceValue = distance.absoluteValue();
+              const double distanceValuePow6 =
+                  distanceValue * distanceValue * distanceValue * distanceValue * distanceValue * distanceValue;
+              const double distanceValuePow13 = distanceValuePow6 * distanceValuePow6 * distanceValue;
 
-          // https://www.ableitungsrechner.net/#expr=4%2A%CE%B5%28%28%CF%83%2Fr%29%5E12-%28%CF%83%2Fr%29%5E6%29&diffvar=r
-          const double forceValue =
-              (twentyFourEpsilonSigmaPow6 * distanceValuePow6 - fourtyEightEpsilonSigmaPow12) / distanceValuePow13;
-          if (config.globalForce) {
-            cell.forces(id_1) += (distance * (forceValue / distanceValue)) + config.globalForce.value();
-          } else {
-            cell.forces(id_1) += (distance * (forceValue / distanceValue));
+              // https://www.ableitungsrechner.net/#expr=4%2A%CE%B5%28%28%CF%83%2Fr%29%5E12-%28%CF%83%2Fr%29%5E6%29&diffvar=r
+              const double forceValue =
+                  (twentyFourEpsilonSigmaPow6 * distanceValuePow6 - fourtyEightEpsilonSigmaPow12) / distanceValuePow13;
+              cell.forces(id_1) += (distance * (forceValue / distanceValue));
+            }
           }
         }
-      }
-    }
-  });
+      });
 }
 
 void LinkedCellsParticleContainer::calculateForcesNewton3() const {
@@ -253,46 +278,46 @@ void LinkedCellsParticleContainer::calculateVelocities() const {
 }
 
 void LinkedCellsParticleContainer::moveParticles() const {
-
-  // TODO
-  constexpr enum BoundaryCondition {
-    none, periodic, reflecting
-  } condition(periodic);
-
-  for (int x = 0; x < numCellsX; ++x) {
-    for (int y = 0; y < numCellsY; ++y) {
-      for (int z = 0; z < numCellsZ; ++z) {
+  for (int x = 1; x < numCellsX - 1; ++x) {
+    for (int y = 1; y < numCellsY - 1; ++y) {
+      for (int z = 1; z < numCellsZ - 1; ++z) {
         const int cellNumber = getCellNumberFromRelativeCellCoordinates(x, y, z);
-        const auto particles = cells(cellNumber).getParticles();
+        Cell &cell = cells(cellNumber);
+        const auto particles = cell.getParticles();
         for (int particleIndex = particles.size() - 1; particleIndex >= 0; --particleIndex) {
           Particle particle = particles[particleIndex];
           const int correctCellNumber = getCorrectCellNumber(particle);
           if (cellNumber == correctCellNumber) {
             continue;
           }
-          cells(cellNumber).removeParticle(particleIndex);
+          cell.removeParticle(particleIndex);
           if (correctCellNumber < 0 || numCells <= correctCellNumber) {
-            std::cout << "That should not happennn" << std::endl;
+            std::cout << "That should not happen2" << std::endl;
             continue;
           }
-          auto &cell = cells(correctCellNumber);
-          if (cell.isHaloCell) {
+          Cell &correctCell = cells(correctCellNumber);
+          if (correctCell.isHaloCell) {
             switch (condition) {
               case none:break;
-              case periodic:
+              case periodic: {
+                const auto correctCoords = getRelativeCellCoordinates(correctCellNumber);
+                const int correctX = correctCoords[0];
+                const int correctY = correctCoords[1];
+                const int correctZ = correctCoords[2];
                 particle.position += Coord3D(
-                    (x == 0 ? 1 : x == numCellsX - 1 ? -1 : 0) * config.cutoff * (numCellsX - 2),
-                    (y == 0 ? 1 : y == numCellsY - 1 ? -1 : 0) * config.cutoff * (numCellsY - 2),
-                    (z == 0 ? 1 : z == numCellsZ - 1 ? -1 : 0) * config.cutoff * (numCellsZ - 2)
+                    (correctX == 0 ? 1 : correctX == numCellsX - 1 ? -1 : 0) * config.cutoff * (numCellsX - 2),
+                    (correctY == 0 ? 1 : correctY == numCellsY - 1 ? -1 : 0) * config.cutoff * (numCellsY - 2),
+                    (correctZ == 0 ? 1 : correctZ == numCellsZ - 1 ? -1 : 0) * config.cutoff * (numCellsZ - 2)
                 );
                 addParticle(particle);
+              }
                 break;
               case reflecting:
                 // TODO
                 break;
             }
           } else {
-            cell.addParticle(particle);
+            correctCell.addParticle(particle);
           }
         }
       }
