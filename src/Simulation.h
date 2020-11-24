@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "SimulationConfig.h"
+#include "SimulationConfig/SimulationConfig.h"
 #include "Containers/LinkedCellsParticleContainer.h"
 #include <spdlog//spdlog.h>
 
@@ -26,10 +26,7 @@ class Simulation {
   const double fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
 
   explicit Simulation(SimulationConfig config, std::vector<Particle> &particles)
-      : config(std::move(config)), container(LinkedCellsParticleContainer(particles, config)) {
-    std::cout << "Using the following simulation configuration:" << std::endl << std::endl << config << std::endl
-              << std::endl;
-  }
+      : config(std::move(config)), container(LinkedCellsParticleContainer(particles, config)) { }
 
   /// Starts the simulation
   void start() {

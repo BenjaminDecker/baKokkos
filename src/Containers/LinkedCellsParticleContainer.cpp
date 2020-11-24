@@ -10,6 +10,8 @@
 LinkedCellsParticleContainer::LinkedCellsParticleContainer(const std::vector<Particle> &particles,
                                                            const SimulationConfig &config)
     : config(config), iteration(0) {
+  std::cout << "Using the following simulation configuration:" << std::endl << std::endl << config << std::endl
+            << std::endl;
   spdlog::info("Initializing particles...");
   Kokkos::Timer timer;
   if (config.box) {
@@ -152,7 +154,7 @@ void LinkedCellsParticleContainer::doIteration() {
   calculateVelocities();
   moveParticles();
   if (config.vtkFileName && iteration % config.vtkWriteFrequency == 0) {
-    writeVTKFile(iteration, config.iterations, config.vtkFileName.value());
+    writeVTKFile();
   }
   ++iteration;
 }
@@ -271,7 +273,8 @@ void LinkedCellsParticleContainer::moveParticles() const {
           Cell &correctCell = cells(correctCellNumber);
           if (correctCell.isHaloCell) {
             switch (condition) {
-              case none:break;
+              case none:
+              case reflecting:break;
               case periodic: {
                 const auto correctCoords = getRelativeCellCoordinates(correctCellNumber);
                 const int correctX = correctCoords[0];
@@ -284,9 +287,6 @@ void LinkedCellsParticleContainer::moveParticles() const {
                 );
                 addParticle(particle);
               }
-                break;
-              case reflecting:
-                // TODO
                 break;
             }
           } else {
@@ -337,10 +337,10 @@ int LinkedCellsParticleContainer::getCellColor(int cellNumber) const {
   return (coords[0] % 2 == 0 ? 0 : 1) + (coords[1] % 2 == 0 ? 0 : 2) + (coords[2] % 2 == 0 ? 0 : 4);
 }
 
-void LinkedCellsParticleContainer::writeVTKFile(int iteration, int maxIterations, const std::string &fileName) const {
-  const std::string fileBaseName("baKokkos");
+void LinkedCellsParticleContainer::writeVTKFile() const {
+  const std::string fileBaseName = config.vtkFileName.value();
   std::ostringstream strstr;
-  auto maxNumDigits = std::to_string(maxIterations).length();
+  auto maxNumDigits = std::to_string(config.iterations).length();
   std::vector<Particle> particles = getParticles();
   std::sort(particles.begin(), particles.end(), [](Particle &p1, Particle &p2) {
     return p1.particleID < p2.particleID;

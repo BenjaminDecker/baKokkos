@@ -6,7 +6,7 @@
 
 #include <array>
 #include "Particle.h"
-#include "../SimulationConfig.h"
+#include "../SimulationConfig/SimulationConfig.h"
 #include "Cell.h"
 
 #ifdef KOKKOS_ENABLE_CUDA
@@ -89,5 +89,5 @@ class LinkedCellsParticleContainer {
   [[nodiscard]] std::vector<int> getNeighbourCellNumbers(int cellNumber) const;
   [[nodiscard]] int getCorrectCellNumber(const Particle &particle) const;
   [[nodiscard]] int getCellColor(int cellNumber) const;
-  void writeVTKFile(int iteration, int maxIterations, const std::string &fileName) const;
+  void writeVTKFile() const;
 };
