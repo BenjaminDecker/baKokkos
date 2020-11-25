@@ -25,10 +25,7 @@ class YamlParser {
   std::optional<int> vtkWriteFrequency;
   std::optional<Coord3D> globalForce;
   std::optional<std::pair<Coord3D, Coord3D>> box;
-  std::vector<ParticleCuboid> particleCuboids; /**< Cuboids that could be read from the .yamlFile */
-  std::vector<ParticleSphere> particleSpheres; /**< Spheres that could be read from the .yamlFile */
-  std::vector<CubeClosestPacked> cubesClosest; /**< Closest packed cubes that could be read from the .yamlFile */
+  std::vector<const std::shared_ptr<const ParticleGroup>> particleGroups;
 
   explicit YamlParser(const std::string &fileName);
-  [[nodiscard]] std::vector<Particle> getParticles() const;
 };

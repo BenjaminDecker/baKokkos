@@ -73,7 +73,7 @@ class LinkedCellsParticleContainer {
    * @brief Initialises particles
    * @param parser stores particle information from a .yaml file
    */
-  explicit LinkedCellsParticleContainer(const std::vector<Particle> &particles, const SimulationConfig &config);
+  explicit LinkedCellsParticleContainer(const SimulationConfig &config);
   void addParticle(const Particle &particle) const;
   [[nodiscard]] std::vector<Particle> getParticles() const;
   void doIteration();

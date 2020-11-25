@@ -16,17 +16,8 @@ class Simulation {
   const SimulationConfig config;
   LinkedCellsParticleContainer container;
 
-  //TODO get those from the ParticlePropertiesLibrary
-  const double epsilon = 1;
-  const double sigma = 1;
-  const double mass = 1;
-
-  const double sigmaPow6 = sigma * sigma * sigma * sigma * sigma * sigma;
-  const double twentyFourEpsilonSigmaPow6 = 24 * epsilon * sigmaPow6;
-  const double fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
-
-  explicit Simulation(SimulationConfig config, std::vector<Particle> &particles)
-      : config(std::move(config)), container(LinkedCellsParticleContainer(particles, config)) { }
+  explicit Simulation(const SimulationConfig &config)
+      : config(config), container(LinkedCellsParticleContainer(config)) {}
 
   /// Starts the simulation
   void start() {

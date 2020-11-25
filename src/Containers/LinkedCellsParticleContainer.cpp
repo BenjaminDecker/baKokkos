@@ -7,13 +7,16 @@
 #include <iomanip>
 #include <fstream>
 
-LinkedCellsParticleContainer::LinkedCellsParticleContainer(const std::vector<Particle> &particles,
-                                                           const SimulationConfig &config)
+LinkedCellsParticleContainer::LinkedCellsParticleContainer(const SimulationConfig &config)
     : config(config), iteration(0) {
   std::cout << "Using the following simulation configuration:" << std::endl << std::endl << config << std::endl
             << std::endl;
   spdlog::info("Initializing particles...");
   Kokkos::Timer timer;
+  std::vector<Particle> particles;
+  for(auto particleGroup : config.particleGroups) {
+    particleGroup.
+  }
   if (config.box) {
     boxMin = config.box.value().first;
     boxMax = config.box.value().second;

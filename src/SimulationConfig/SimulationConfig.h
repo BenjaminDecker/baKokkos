@@ -8,6 +8,7 @@
 #include <cxxopts.hpp>
 #include <spdlog/spdlog.h>
 #include "../Containers/Coord3D.h"
+#include "YamlParser.h"
 
 class SimulationConfig {
  public:
@@ -22,24 +23,32 @@ class SimulationConfig {
   /// Global force acting on every particle in every time step
   const Coord3D globalForce;
   /// Pair of front-left-bottom corner and back-right-top corner of the simulation space cuboid
-  const std::pair<const Coord3D, const Coord3D> box;
+  const std::optional<const std::pair<const Coord3D, const Coord3D>> box;
   /// Optional pair of a vtk file basename and a vtk write frequency for the vtk file output
   const std::optional<const std::pair<const std::string, const int>> vtk;
+  /**
+   * The particles for the simulation are given in a compact form as particle groups. These groups offer calculating
+   * and returning the particles contained in the group.
+   * @see ParticleGroup
+   */
+  const std::vector<const std::shared_ptr<const ParticleGroup>> particleGroups;
 
   SimulationConfig(const ContainerStructure container_structure,
                    const int iterations,
                    const double delta_t,
                    const double cutoff,
                    const Coord3D &global_force,
-                   const std::pair<const Coord3D, const Coord3D> &box,
-                   const std::optional<const std::pair<const std::string, const int>> &vtk)
+                   const std::optional<const std::pair<const Coord3D, const Coord3D>> &box,
+                   const std::optional<const std::pair<const std::string, const int>> &vtk,
+                   const std::vector<const std::shared_ptr<const ParticleGroup>> &particleGroups)
       : containerStructure(container_structure),
         iterations(iterations),
         deltaT(delta_t),
         cutoff(cutoff),
         globalForce(global_force),
         box(box),
-        vtk(vtk) {}
+        vtk(vtk),
+        particleGroups(particleGroups) {}
 
   static SimulationConfig readConfig(int argc, char *argv[]) {
     constexpr auto helpStr = "help";
@@ -79,8 +88,9 @@ class SimulationConfig {
     double deltaT;
     double cutoff;
     Coord3D globalForce;
-    std::pair<const Coord3D, const Coord3D> box;
+    std::optional<const std::pair<const Coord3D, const Coord3D>> box;
     std::optional<const std::pair<const std::string, const int>> vtk;
+    std::vector<const std::shared_ptr<const ParticleGroup>> particleGroups;
 
     std::string containerStructureParam = result[containerStructureStr].as<std::string>();
     if (containerStructureParam == "DirectSum") {
@@ -93,8 +103,32 @@ class SimulationConfig {
                        + '"' + "LinkedCells" + '"' + " instead.");
       containerStructure = LinkedCells;
     }
-
-    return SimulationConfig(containerStructure, iterations, deltaT, cutoff, globalForce, box, vtk);
+    iterations = result[iterationsStr].as<int>();
+    deltaT = result[deltaTStr].as<double>();
+    cutoff = result[cutoffStr].as<double>();
+    if (result[vtk_filenameStr].count() > 0) {
+      vtk.emplace(result[vtk_filenameStr].as<std::string>(), result[vtk_write_frequencyStr].as<int>());
+    }
+    if (result[yaml_filenameStr].count() > 0) {
+      YamlParser parser(result[yaml_filenameStr].as<std::string>());
+      if (parser.iterations) {
+        iterations = parser.iterations.value();
+      }
+      if (parser.deltaT) {
+        deltaT = parser.deltaT.value();
+      }
+      if (parser.cutoff) {
+        cutoff = parser.cutoff.value();
+      }
+      if (parser.vtkFileName && parser.vtkWriteFrequency) {
+        vtk.emplace(parser.vtkFileName.value(), parser.vtkWriteFrequency.value());
+      }
+      if (parser.box) {
+        box.emplace(parser.box.value());
+      }
+      particleGroups = parser.particleGroups;
+    }
+    return SimulationConfig(containerStructure, iterations, deltaT, cutoff, globalForce, box, vtk, particleGroups);
   }
 };
 
@@ -112,8 +146,10 @@ static std::ostream &operator<<(std::ostream &stream, const SimulationConfig &ob
   stream << "cutoff: " << obj.cutoff << std::endl;
   stream << "globalForce: " << obj.globalForce << std::endl;
   stream << "box:" << std::endl;
-  stream << "  box-min: " << obj.box.first << std::endl;
-  stream << "  box-max: " << obj.box.second << std::endl;
+  if(obj.box) {
+    stream << "  box-min: " << obj.box.value().first << std::endl;
+    stream << "  box-max: " << obj.box.value().second << std::endl;
+  }
   if (obj.vtk) {
     stream << "vtk-filename: " << obj.vtk.value().first << ".vtk" << std::endl;
     stream << "vtk-write-frequency: " << obj.vtk.value().second << std::endl;

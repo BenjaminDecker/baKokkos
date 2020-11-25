@@ -4,162 +4,170 @@
 
 #include "YamlParser.h"
 YamlParser::YamlParser(const std::string &fileName) {
+  static constexpr auto iterationsStr = "iterations";
+  static constexpr auto deltaTStr = "deltaT";
+  static constexpr auto cutoffStr = "cutoff";
+  static constexpr auto vtk_filenameStr = "vtk-filename";
+  static constexpr auto vtk_write_frequencyStr = "vtk-write-frequency";
+  static constexpr auto globalForceStr = "globalForce";
+  static constexpr auto box_minStr = "box-min";
+  static constexpr auto box_maxStr = "box-max";
+  static constexpr auto objectsStr = "Objects";
+  static constexpr auto cubeGridStr = "CubeGrid";
+  static constexpr auto sphereStr = "Sphere";
+  static constexpr auto cubeClosestPackedStr = "CubeClosestPacked";
+  static constexpr auto particleTypeStr = "particle-type";
+  static constexpr auto particleSpacingStr = "particle-spacing";
+  static constexpr auto particleEpsilonStr = "particle-epsilon";
+  static constexpr auto particleSigmaStr = "particle-sigma";
+  static constexpr auto particleMassStr = "particle-mass";
+  static constexpr auto velocityStr = "velocity";
+  static constexpr auto bottomLeftCornerStr = "bottomLeftCorner";
+  static constexpr auto particles_per_dimensionStr = "particles-per-dimension";
+  static constexpr auto radiusStr = "radius";
+  static constexpr auto centerStr = "center";
+  static constexpr auto boxLengthStr = "boxLength";
   YAML::Node config = YAML::LoadFile(fileName);
-
-  if (config["iterations"]) {
-    iterations = config["iterations"].as<int>();
+  if (config[iterationsStr]) {
+    iterations = config[iterationsStr].as<int>();
   }
-  if (config["deltaT"]) {
-    deltaT = config["deltaT"].as<double>();
+  if (config[deltaTStr]) {
+    deltaT = config[deltaTStr].as<double>();
   }
-  if (config["cutoff"]) {
-    cutoff = config["cutoff"].as<double>();
+  if (config[cutoffStr]) {
+    cutoff = config[cutoffStr].as<double>();
   }
-  if (config["vtk-filename"]) {
-    vtkFileName = config["vtk-filename"].as<std::string>();
+  if (config[vtk_filenameStr]) {
+    vtkFileName = config[vtk_filenameStr].as<std::string>();
   }
-  if (config["vtk-write-frequency"]) {
-    vtkWriteFrequency = config["vtk-write-frequency"].as<int>();
+  if (config[vtk_write_frequencyStr]) {
+    vtkWriteFrequency = config[vtk_write_frequencyStr].as<int>();
   }
-  if (config["globalForce"]) {
-    globalForce = Coord3D(config["globalForce"][0].as<double>(),
-                          config["globalForce"][1].as<double>(),
-                          config["globalForce"][2].as<double>());
+  if (config[globalForceStr]) {
+    globalForce = Coord3D(config[globalForceStr][0].as<double>(),
+                          config[globalForceStr][1].as<double>(),
+                          config[globalForceStr][2].as<double>());
   }
-  if (config["box-min"] && config["box-max"]) {
-    Coord3D boxMin = Coord3D(config["box-min"][0].as<double>(),
-                             config["box-min"][1].as<double>(),
-                             config["box-min"][2].as<double>());
-    Coord3D boxMax = Coord3D(config["box-max"][0].as<double>(),
-                             config["box-max"][1].as<double>(),
-                             config["box-max"][2].as<double>());
+  if (config[box_minStr] && config[box_maxStr]) {
+    Coord3D boxMin = Coord3D(config[box_minStr][0].as<double>(),
+                             config[box_minStr][1].as<double>(),
+                             config[box_minStr][2].as<double>());
+    Coord3D boxMax = Coord3D(config[box_maxStr][0].as<double>(),
+                             config[box_maxStr][1].as<double>(),
+                             config[box_maxStr][2].as<double>());
     box = {boxMin, boxMax};
   }
 
-  auto objects = config["Objects"];
+  auto objects = config[objectsStr];
   for (auto objectIterator = objects.begin();
        objectIterator != objects.end();
        ++objectIterator) {
-    if (objectIterator->first.as<std::string>() == "CubeGrid") {
+    if (objectIterator->first.as<std::string>() == cubeGridStr) {
       for (auto cuboidIterator = objectIterator->second.begin();
            cuboidIterator != objectIterator->second.end();
            ++cuboidIterator) {
         auto cuboid = cuboidIterator->second;
-        auto typeID = cuboid["particle-type"].as<int>();
-        auto spacing = cuboid["particle-spacing"].as<double>();
-        auto particleEpsilon = cuboid["particle-epsilon"].as<double>();
-        auto particleSigma = cuboid["particle-sigma"].as<double>();
-        auto particleMass = cuboid["particle-mass"].as<double>();
+        auto typeID = cuboid[particleTypeStr].as<int>();
+        auto spacing = cuboid[particleSpacingStr].as<double>();
+        auto particleEpsilon = cuboid[particleEpsilonStr].as<double>();
+        auto particleSigma = cuboid[particleSigmaStr].as<double>();
+        auto particleMass = cuboid[particleMassStr].as<double>();
 
-        auto velocityNode = cuboid["velocity"];
+        auto velocityNode = cuboid[velocityStr];
         auto velocity = Coord3D(velocityNode[0].as<double>(),
                                 velocityNode[1].as<double>(),
                                 velocityNode[2].as<double>());
-        auto bottomLeftCornerNode = cuboid["bottomLeftCorner"];
+        auto bottomLeftCornerNode = cuboid[bottomLeftCornerStr];
         auto bottomLeftCorner = Coord3D(bottomLeftCornerNode[0].as<double>(),
                                         bottomLeftCornerNode[1].as<double>(),
                                         bottomLeftCornerNode[2].as<double>());
-        auto particlesPerDimensionNode = cuboid["particles-per-dimension"];
+        auto particlesPerDimensionNode = cuboid[particles_per_dimensionStr];
         auto particlesPerDimension = Coord3D(particlesPerDimensionNode[0].as<double>(),
                                              particlesPerDimensionNode[1].as<double>(),
                                              particlesPerDimensionNode[2].as<double>());
 
-        particleCuboids.emplace_back(typeID,
-                                     spacing,
-                                     velocity,
-                                     particleEpsilon,
-                                     particleSigma,
-                                     particleMass,
-                                     bottomLeftCorner,
-                                     particlesPerDimension);
+        particleGroups.push_back(
+            std::make_shared<ParticleCuboid>(
+                typeID,
+                spacing,
+                velocity,
+                particleEpsilon,
+                particleSigma,
+                particleMass,
+                bottomLeftCorner,
+                particlesPerDimension));
       }
     }
 
-    if (objectIterator->first.as<std::string>() == "Sphere") {
+    if (objectIterator->first.as<std::string>() == sphereStr) {
       for (auto sphereIterator = objectIterator->second.begin();
            sphereIterator != objectIterator->second.end();
            ++sphereIterator) {
         auto sphere = sphereIterator->second;
-        auto typeID = sphere["particle-type"].as<int>();
-        auto spacing = sphere["particle-spacing"].as<double>();
-        auto particleEpsilon = sphere["particle-epsilon"].as<double>();
-        auto particleSigma = sphere["particle-sigma"].as<double>();
-        auto particleMass = sphere["particle-mass"].as<double>();
-        auto radius = sphere["radius"].as<double>();
+        auto typeID = sphere[particleTypeStr].as<int>();
+        auto spacing = sphere[particleSpacingStr].as<double>();
+        auto particleEpsilon = sphere[particleEpsilonStr].as<double>();
+        auto particleSigma = sphere[particleSigmaStr].as<double>();
+        auto particleMass = sphere[particleMassStr].as<double>();
+        auto radius = sphere[radiusStr].as<double>();
 
-        auto velocityNode = sphere["velocity"];
+        auto velocityNode = sphere[velocityStr];
         auto velocity = Coord3D(velocityNode[0].as<double>(),
                                 velocityNode[1].as<double>(),
                                 velocityNode[2].as<double>());
-        auto centerNode = sphere["center"];
+        auto centerNode = sphere[centerStr];
         auto center = Coord3D(centerNode[0].as<double>(),
                               centerNode[1].as<double>(),
                               centerNode[2].as<double>());
 
-        particleSpheres.emplace_back(typeID,
-                                     spacing,
-                                     velocity,
-                                     particleEpsilon,
-                                     particleSigma,
-                                     particleMass,
-                                     center,
-                                     radius);
+        particleGroups.push_back(
+            std::make_shared<ParticleSphere>(
+                typeID,
+                spacing,
+                velocity,
+                particleEpsilon,
+                particleSigma,
+                particleMass,
+                center,
+                radius));
       }
     }
 
-    if (objectIterator->first.as<std::string>() == "CubeClosestPacked") {
+    if (objectIterator->first.as<std::string>() == cubeClosestPackedStr) {
       for (auto cubeClosestIterator = objectIterator->second.begin();
            cubeClosestIterator != objectIterator->second.end();
            ++cubeClosestIterator) {
         auto cubeClosest = cubeClosestIterator->second;
-        auto typeID = cubeClosest["particle-type"].as<int>();
-        auto spacing = cubeClosest["particle-spacing"].as<double>();
-        auto particleEpsilon = cubeClosest["particle-epsilon"].as<double>();
-        auto particleSigma = cubeClosest["particle-sigma"].as<double>();
-        auto particleMass = cubeClosest["particle-mass"].as<double>();
+        auto typeID = cubeClosest[particleTypeStr].as<int>();
+        auto spacing = cubeClosest[sphereStr].as<double>();
+        auto particleEpsilon = cubeClosest[particleEpsilonStr].as<double>();
+        auto particleSigma = cubeClosest[particleSigmaStr].as<double>();
+        auto particleMass = cubeClosest[particleMassStr].as<double>();
 
-        auto velocityNode = cubeClosest["velocity"];
+        auto velocityNode = cubeClosest[velocityStr];
         auto velocity = Coord3D(velocityNode[0].as<double>(),
                                 velocityNode[1].as<double>(),
                                 velocityNode[2].as<double>());
-        auto bottomLeftCornerNode = cubeClosest["bottomLeftCorner"];
+        auto bottomLeftCornerNode = cubeClosest[bottomLeftCornerStr];
         auto bottomLeftCorner = Coord3D(bottomLeftCornerNode[0].as<double>(),
                                         bottomLeftCornerNode[1].as<double>(),
                                         bottomLeftCornerNode[2].as<double>());
-        auto boxLengthNode = cubeClosest["box-length"];
+        auto boxLengthNode = cubeClosest[boxLengthStr];
         auto boxLength = Coord3D(boxLengthNode[0].as<double>(),
                                  boxLengthNode[1].as<double>(),
                                  boxLengthNode[2].as<double>());
 
-        cubesClosest.emplace_back(typeID,
-                                  spacing,
-                                  velocity,
-                                  particleEpsilon,
-                                  particleSigma,
-                                  particleMass,
-                                  bottomLeftCorner,
-                                  boxLength);
+        particleGroups.push_back(
+            std::make_shared<CubeClosestPacked>(
+                typeID,
+                spacing,
+                velocity,
+                particleEpsilon,
+                particleSigma,
+                particleMass,
+                bottomLeftCorner,
+                boxLength));
       }
     }
   }
-}
-
-std::vector<Particle> YamlParser::getParticles() const {
-  std::vector<Particle> particles;
-  for (auto &cuboid : particleCuboids) {
-    for (auto &newParticle : cuboid.getParticles(particles.size())) {
-      particles.push_back(newParticle);
-    }
-  }
-  for (auto &sphere : particleSpheres) {
-    for (auto &newParticle : sphere.getParticles(particles.size())) {
-      particles.push_back(newParticle);
-    }
-  }
-  for (auto &cubeClosest : cubesClosest) {
-    for (auto &newParticle : cubeClosest.getParticles(particles.size())) {
-      particles.push_back(newParticle);
-    }
-  }
-  return particles;
 }
