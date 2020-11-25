@@ -63,7 +63,12 @@ class LinkedCellsParticleContainer {
   int numCellsZ;
   int numCells;
   int iteration;
-  const SimulationConfig config;
+
+  const std::optional<const std::pair<const std::string, const int>> vtk;
+  const double deltaT;
+  const Coord3D globalForce;
+  const double cutoff;
+  const int iterations;
 
   std::array<Kokkos::View<int*>, 8> c08baseCells;
 
@@ -89,5 +94,5 @@ class LinkedCellsParticleContainer {
   [[nodiscard]] std::vector<int> getNeighbourCellNumbers(int cellNumber) const;
   [[nodiscard]] int getCorrectCellNumber(const Particle &particle) const;
   [[nodiscard]] int getCellColor(int cellNumber) const;
-  void writeVTKFile() const;
+  void writeVTKFile(const std::string &fileBaseName) const;
 };

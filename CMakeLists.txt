@@ -32,7 +32,7 @@ file(
         "src/*.cpp"
         "src/*.h"
 )
-add_executable(baKokkos ${baKokkos_SRC} src/SimulationConfig/ParticleGroupContainer.h)
+add_executable(baKokkos ${baKokkos_SRC})
 target_link_libraries(baKokkos kokkos yaml-cpp cxxopts spdlog)
 
 include(doxygen.cmake)

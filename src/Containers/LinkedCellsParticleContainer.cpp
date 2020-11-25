@@ -8,14 +8,22 @@
 #include <fstream>
 
 LinkedCellsParticleContainer::LinkedCellsParticleContainer(const SimulationConfig &config)
-    : config(config), iteration(0) {
+    : vtk(config.vtk),
+      deltaT(config.deltaT),
+      globalForce(config.globalForce),
+      cutoff(config.cutoff),
+      iterations(config.iterations),
+      iteration(0) {
   std::cout << "Using the following simulation configuration:" << std::endl << std::endl << config << std::endl
             << std::endl;
   spdlog::info("Initializing particles...");
   Kokkos::Timer timer;
   std::vector<Particle> particles;
-  for(auto particleGroup : config.particleGroups) {
-    particleGroup.
+  for (const auto &particleGroup : config.particleGroups) {
+    auto newParticles = particleGroup->getParticles(particles.size());
+    for (const auto &particle : newParticles) {
+      particles.push_back(particle);
+    }
   }
   if (config.box) {
     boxMin = config.box.value().first;
@@ -37,7 +45,7 @@ LinkedCellsParticleContainer::LinkedCellsParticleContainer(const SimulationConfi
       highestZ = std::max(highestZ, particle.position.z);
       midPoint += particle.position;
     }
-    midPoint *= 1.0 / particles.size();
+    midPoint /= particles.size();
     boxMin = midPoint - Coord3D(config.cutoff, config.cutoff, config.cutoff);
     boxMax = midPoint;
     while (lowestX < boxMin.x) {
@@ -156,8 +164,8 @@ void LinkedCellsParticleContainer::doIteration() {
   calculateForces();
   calculateVelocities();
   moveParticles();
-  if (config.vtkFileName && iteration % config.vtkWriteFrequency == 0) {
-    writeVTKFile();
+  if (vtk && iteration % vtk.value().second == 0) {
+    writeVTKFile(vtk.value().first);
   }
   ++iteration;
 }
@@ -169,7 +177,7 @@ void LinkedCellsParticleContainer::calculatePositions() const {
     const Cell &cell = cells(cellNumber);
     for (int i = 0; i < cell.size; ++i) {
       cell.positions(i) +=
-          cell.velocities(i) * config.deltaT + cell.forces(i) * ((config.deltaT * config.deltaT) / (2 * mass));
+          cell.velocities(i) * deltaT + cell.forces(i) * ((deltaT * deltaT) / (2 * mass));
     }
   });
 }
@@ -190,7 +198,7 @@ void LinkedCellsParticleContainer::calculateForces() const {
   Kokkos::parallel_for("resetForces", numCells, KOKKOS_LAMBDA(int cellNumber) {
     auto cell = cells(cellNumber);
     for (int index = 0; index < cell.size; ++index) {
-      cell.forces(index) = config.globalForce ? config.globalForce.value() : Coord3D();
+      cell.forces(index) = globalForce;
     }
   });
 
@@ -211,8 +219,8 @@ void LinkedCellsParticleContainer::calculateForces() const {
                 const int periodicTargetCellNumber = periodicTargetCellNumbers(neighbourCellNumber);
                 offset = cells(neighbourCellNumber).bottomLeftCorner - cells(periodicTargetCellNumber).bottomLeftCorner;
                 neighbourCellNumber = periodicTargetCellNumber;
-              }
                 break;
+              }
               case reflecting:
                 // TODO
                 break;
@@ -250,7 +258,7 @@ void LinkedCellsParticleContainer::calculateVelocities() const {
   Kokkos::parallel_for("iterateCalculateVelocities", numCells, KOKKOS_LAMBDA(int cellNumber) {
     const Cell &cell = cells(cellNumber);
     for (int i = 0; i < cell.size; ++i) {
-      cell.velocities(i) += (cell.forces(i) + cell.oldForces(i)) * (config.deltaT / (2 * mass));
+      cell.velocities(i) += (cell.forces(i) + cell.oldForces(i)) * (deltaT / (2 * mass));
     }
   });
 }
@@ -284,9 +292,9 @@ void LinkedCellsParticleContainer::moveParticles() const {
                 const int correctY = correctCoords[1];
                 const int correctZ = correctCoords[2];
                 particle.position += Coord3D(
-                    (correctX == 0 ? 1 : correctX == numCellsX - 1 ? -1 : 0) * config.cutoff * (numCellsX - 2),
-                    (correctY == 0 ? 1 : correctY == numCellsY - 1 ? -1 : 0) * config.cutoff * (numCellsY - 2),
-                    (correctZ == 0 ? 1 : correctZ == numCellsZ - 1 ? -1 : 0) * config.cutoff * (numCellsZ - 2)
+                    (correctX == 0 ? 1 : correctX == numCellsX - 1 ? -1 : 0) * cutoff * (numCellsX - 2),
+                    (correctY == 0 ? 1 : correctY == numCellsY - 1 ? -1 : 0) * cutoff * (numCellsY - 2),
+                    (correctZ == 0 ? 1 : correctZ == numCellsZ - 1 ? -1 : 0) * cutoff * (numCellsZ - 2)
                 );
                 addParticle(particle);
               }
@@ -329,7 +337,7 @@ std::vector<int> LinkedCellsParticleContainer::getNeighbourCellNumbers(int cellN
 }
 
 int LinkedCellsParticleContainer::getCorrectCellNumber(const Particle &particle) const {
-  const Coord3D cellPosition = (particle.position - boxMin) / config.cutoff;
+  const Coord3D cellPosition = (particle.position - boxMin) / cutoff;
   return getCellNumberFromRelativeCellCoordinates(static_cast<int>(cellPosition.x),
                                                   static_cast<int>(cellPosition.y),
                                                   static_cast<int>(cellPosition.z));
@@ -340,10 +348,12 @@ int LinkedCellsParticleContainer::getCellColor(int cellNumber) const {
   return (coords[0] % 2 == 0 ? 0 : 1) + (coords[1] % 2 == 0 ? 0 : 2) + (coords[2] % 2 == 0 ? 0 : 4);
 }
 
-void LinkedCellsParticleContainer::writeVTKFile() const {
-  const std::string fileBaseName = config.vtkFileName.value();
+void LinkedCellsParticleContainer::writeVTKFile(const std::string &fileBaseName) const {
+  if (!vtk) {
+    return;
+  }
   std::ostringstream strstr;
-  auto maxNumDigits = std::to_string(config.iterations).length();
+  auto maxNumDigits = std::to_string(iterations).length();
   std::vector<Particle> particles = getParticles();
   std::sort(particles.begin(), particles.end(), [](Particle &p1, Particle &p2) {
     return p1.particleID < p2.particleID;

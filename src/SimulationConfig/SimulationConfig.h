@@ -31,7 +31,7 @@ class SimulationConfig {
    * and returning the particles contained in the group.
    * @see ParticleGroup
    */
-  const std::vector<const std::shared_ptr<const ParticleGroup>> particleGroups;
+  const std::vector<std::shared_ptr<const ParticleGroup>> particleGroups;
 
   SimulationConfig(const ContainerStructure container_structure,
                    const int iterations,
@@ -40,7 +40,7 @@ class SimulationConfig {
                    const Coord3D &global_force,
                    const std::optional<const std::pair<const Coord3D, const Coord3D>> &box,
                    const std::optional<const std::pair<const std::string, const int>> &vtk,
-                   const std::vector<const std::shared_ptr<const ParticleGroup>> &particleGroups)
+                   const std::vector<std::shared_ptr<const ParticleGroup>> &particleGroups)
       : containerStructure(container_structure),
         iterations(iterations),
         deltaT(delta_t),
@@ -90,7 +90,7 @@ class SimulationConfig {
     Coord3D globalForce;
     std::optional<const std::pair<const Coord3D, const Coord3D>> box;
     std::optional<const std::pair<const std::string, const int>> vtk;
-    std::vector<const std::shared_ptr<const ParticleGroup>> particleGroups;
+    std::vector<std::shared_ptr<const ParticleGroup>> particleGroups;
 
     std::string containerStructureParam = result[containerStructureStr].as<std::string>();
     if (containerStructureParam == "DirectSum") {

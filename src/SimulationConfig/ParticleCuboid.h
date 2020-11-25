@@ -35,7 +35,8 @@ class ParticleCuboid : public ParticleGroup {
         particlesPerDimension(particlesPerDimension) {}
 
   /// Places particles in a cuboid grid with dimensions based on the particlesPerDimension and the spacing property.
-  [[nodiscard]] std::vector<Particle> getParticles(int startID) const override {
+  // TODO rename to generateParticles
+  [[nodiscard]] std::vector<Particle> getParticles(int startID = 0) const override {
     std::vector<Particle> particles;
     int idCounter = startID;
     for (int x = 0; x < particlesPerDimension.x; ++x) {
@@ -51,6 +52,7 @@ class ParticleCuboid : public ParticleGroup {
     return particles;
   }
 
+  // TODO default parameter
   [[nodiscard]] std::vector<Particle> getParticles() const override {
     return getParticles(0);
   }

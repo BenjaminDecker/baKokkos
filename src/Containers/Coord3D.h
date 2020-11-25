@@ -61,13 +61,13 @@ class Coord3D {
     return Coord3D{x - rhs.x, y - rhs.y, z - rhs.z};
   }
 
-  /// Component-wise multiplication of two Coord3D's.
+  /// Scalar multiplication of a Coord3D with a double.
   KOKKOS_INLINE_FUNCTION
   Coord3D operator*(double rhs) const {
     return Coord3D{x * rhs, y * rhs, z * rhs};
   }
 
-  /// Component-wise division of two Coord3D's.
+  /// Scalar division of a Coord3D with a double.
   KOKKOS_INLINE_FUNCTION
   Coord3D operator/(double rhs) const {
     return Coord3D{x / rhs, y / rhs, z / rhs};
@@ -79,12 +79,21 @@ class Coord3D {
     return x == rhs.x && y == rhs.y && z == rhs.z;
   }
 
-  /// Component-wise *= operator of two Coord3D's.
+  /// Scalar *= of a Coord3D with a double.
   KOKKOS_INLINE_FUNCTION
   Coord3D &operator*=(double rhs) {
     x = x * rhs;
     y = y * rhs;
     z = z * rhs;
+    return *this;
+  }
+
+  /// Scalar /= of a Coord3D with a double.
+  KOKKOS_INLINE_FUNCTION
+  Coord3D &operator/=(double rhs) {
+    x = x / rhs;
+    y = y / rhs;
+    z = z / rhs;
     return *this;
   }
 
