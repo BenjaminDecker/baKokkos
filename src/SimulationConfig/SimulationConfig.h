@@ -123,6 +123,9 @@ class SimulationConfig {
       if (parser.vtkFileName && parser.vtkWriteFrequency) {
         vtk.emplace(parser.vtkFileName.value(), parser.vtkWriteFrequency.value());
       }
+      if(parser.globalForce) {
+        globalForce = parser.globalForce.value();
+      }
       if (parser.box) {
         box.emplace(parser.box.value());
       }
@@ -145,8 +148,8 @@ static std::ostream &operator<<(std::ostream &stream, const SimulationConfig &ob
   stream << "deltaT: " << obj.deltaT << std::endl;
   stream << "cutoff: " << obj.cutoff << std::endl;
   stream << "globalForce: " << obj.globalForce << std::endl;
-  stream << "box:" << std::endl;
   if(obj.box) {
+    stream << "box:" << std::endl;
     stream << "  box-min: " << obj.box.value().first << std::endl;
     stream << "  box-max: " << obj.box.value().second << std::endl;
   }

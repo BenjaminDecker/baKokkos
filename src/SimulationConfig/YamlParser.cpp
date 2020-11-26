@@ -26,7 +26,7 @@ YamlParser::YamlParser(const std::string &fileName) {
   static constexpr auto particles_per_dimensionStr = "particles-per-dimension";
   static constexpr auto radiusStr = "radius";
   static constexpr auto centerStr = "center";
-  static constexpr auto boxLengthStr = "boxLength";
+  static constexpr auto boxLengthStr = "box-length";
   YAML::Node config = YAML::LoadFile(fileName);
   if (config[iterationsStr]) {
     iterations = config[iterationsStr].as<int>();
@@ -139,7 +139,7 @@ YamlParser::YamlParser(const std::string &fileName) {
            ++cubeClosestIterator) {
         auto cubeClosest = cubeClosestIterator->second;
         auto typeID = cubeClosest[particleTypeStr].as<int>();
-        auto spacing = cubeClosest[sphereStr].as<double>();
+        auto spacing = cubeClosest[particleSpacingStr].as<double>();
         auto particleEpsilon = cubeClosest[particleEpsilonStr].as<double>();
         auto particleSigma = cubeClosest[particleSigmaStr].as<double>();
         auto particleMass = cubeClosest[particleMassStr].as<double>();

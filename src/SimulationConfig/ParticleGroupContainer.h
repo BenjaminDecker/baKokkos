@@ -5,10 +5,11 @@
 #pragma once
 
 #include <vector>
+#include <memory>
 #include "ParticleSphere.h"
 #include "ParticleCuboid.h"
 #include "CubeClosestPacked.h"
 
 class ParticleGroupContainer {
-  const std::vector<const std::shared_ptr<const ParticleGroup>> particleGroups;
+  const std::vector<std::shared_ptr<const ParticleGroup>> particleGroups;
 };

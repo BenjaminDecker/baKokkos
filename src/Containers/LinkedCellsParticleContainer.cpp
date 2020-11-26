@@ -212,7 +212,9 @@ void LinkedCellsParticleContainer::calculateForces() const {
 
   // Iterate over each cell in parallel
   Kokkos::parallel_for(
-      "calculateForces", numCells, KOKKOS_LAMBDA(const int cellNumber) {
+      "calculateForces",
+      Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, numCells),
+      KOKKOS_LAMBDA(const int cellNumber) {
         const Cell &cell = cells(cellNumber);
         if (cell.isHaloCell) {
           return;

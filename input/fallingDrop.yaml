@@ -115,7 +115,7 @@ Objects:
 #   thermostatInterval             :  10
 #   addBrownianMotion              :  false
 vtk-filename                     :  fallingDrop
-vtk-write-frequency              :  50
+vtk-write-frequency              :  200
 no-flops                         :  false
 no-end-config                    :  true
 log-level                        : debug

@@ -15,7 +15,7 @@ class CubeClosestPacked : public ParticleGroup {
   const Coord3D bottomLeftCorner;
 
   /**
-   * Number of particles per dimension. Together with the spacing properties, it desctibes the cuboid sidelengths
+   * Side lengths of the cuboid
    */
   const Coord3D boxLength;
 
