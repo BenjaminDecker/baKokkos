@@ -19,8 +19,16 @@ LinkedCellsParticleContainer::LinkedCellsParticleContainer(const SimulationConfi
   spdlog::info("Initializing particles...");
   Kokkos::Timer timer;
   std::vector<Particle> particles;
+  particleProperties = Kokkos::UnorderedMap<int, ParticleProperties>(config.particleGroups.size());
   for (const auto &particleGroup : config.particleGroups) {
-    auto newParticles = particleGroup->getParticles(particles.size());
+    const int typeID = particleGroup->typeID;
+    const ParticleProperties pp(particleGroup->particleMass);
+    Kokkos::parallel_for("add particle properties", 1, KOKKOS_LAMBDA(int i) {
+      if (!particleProperties.exists(typeID)) {
+        particleProperties.insert(typeID, pp);
+      }
+    });
+    const auto newParticles = particleGroup->getParticles(particles.size());
     for (const auto &particle : newParticles) {
       particles.push_back(particle);
     }
@@ -97,6 +105,7 @@ LinkedCellsParticleContainer::LinkedCellsParticleContainer(const SimulationConfi
       }
     }
   }
+
   for (auto &particle : particles) {
     addParticle(particle);
   }
@@ -171,13 +180,12 @@ void LinkedCellsParticleContainer::doIteration() {
 }
 
 void LinkedCellsParticleContainer::calculatePositions() const {
-  //TODO get from particlePropertiesLibrary
-  constexpr double mass = 1;
   Kokkos::parallel_for("calculatePositions", numCells, KOKKOS_LAMBDA(int cellNumber) {
     const Cell &cell = cells(cellNumber);
     for (int i = 0; i < cell.size; ++i) {
       cell.positions(i) +=
-          cell.velocities(i) * deltaT + cell.forces(i) * ((deltaT * deltaT) / (2 * mass));
+          cell.velocities(i) * deltaT + cell.forces(i) *
+              ((deltaT * deltaT) / (2 * particleProperties.value_at(particleProperties.find(cell.typeIDs(i))).mass));
     }
   });
 }
@@ -253,12 +261,11 @@ void LinkedCellsParticleContainer::calculateForcesNewton3() const {
 }
 
 void LinkedCellsParticleContainer::calculateVelocities() const {
-  //TODO get from particlePropertiesLibrary
-  constexpr double mass = 1;
   Kokkos::parallel_for("iterateCalculateVelocities", numCells, KOKKOS_LAMBDA(int cellNumber) {
     const Cell &cell = cells(cellNumber);
     for (int i = 0; i < cell.size; ++i) {
-      cell.velocities(i) += (cell.forces(i) + cell.oldForces(i)) * (deltaT / (2 * mass));
+      cell.velocities(i) += (cell.forces(i) + cell.oldForces(i)) *
+          (deltaT / (2 * particleProperties.value_at(particleProperties.find(cell.typeIDs(i))).mass));
     }
   });
 }

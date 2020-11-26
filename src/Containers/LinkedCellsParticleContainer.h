@@ -8,6 +8,8 @@
 #include "Particle.h"
 #include "../SimulationConfig/SimulationConfig.h"
 #include "Cell.h"
+#include "ParticleProperies.h"
+#include <Kokkos_UnorderedMap.hpp>
 
 #ifdef KOKKOS_ENABLE_CUDA
 /**
@@ -56,6 +58,7 @@ class LinkedCellsParticleContainer {
   CellsViewType cells; /**< Contains the linked cells that make up the simulation space */
   Kokkos::View<int *[27]> neighbours;
   Kokkos::View<int *> periodicTargetCellNumbers;
+  Kokkos::UnorderedMap<int, ParticleProperties> particleProperties;
   Coord3D boxMin;
   Coord3D boxMax;
   int numCellsX;

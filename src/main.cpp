@@ -1,8 +1,5 @@
 
 #include <Kokkos_Core.hpp>
-#include <cxxopts.hpp>
-#include <spdlog/spdlog.h>
-#include <optional>
 #include "Simulation.h"
 
 int main(int argc, char *argv[]) {
