@@ -398,50 +398,50 @@ void LinkedCellsParticleContainer::writeVTKFile(const std::string &fileBaseName)
         throw std::runtime_error("Simulation::writeVTKFile(): Failed to open file \"" + strstr.str() + "\"");
     }
 
-    vtkFile << "# vtk DataFile Version 2.0" << std::endl;
-    vtkFile << "Timestep" << std::endl;
-    vtkFile << "ASCII" << std::endl;
+    vtkFile << "# vtk DataFile Version 2.0" << "\n";
+    vtkFile << "Timestep" << "\n";
+    vtkFile << "ASCII" << "\n";
 
     // print positions
-    vtkFile << "DATASET STRUCTURED_GRID" << std::endl;
-    vtkFile << "DIMENSIONS 1 1 1" << std::endl;
-    vtkFile << "POINTS " << particles.size() << " double" << std::endl;
+    vtkFile << "DATASET STRUCTURED_GRID" << "\n";
+    vtkFile << "DIMENSIONS 1 1 1" << "\n";
+    vtkFile << "POINTS " << particles.size() << " double" << "\n";
     for (int i = 0; i < particles.size(); ++i) {
         auto coord = particles[i].position;
-        vtkFile << coord.x << " " << coord.y << " " << coord.z << std::endl;
+        vtkFile << coord.x << " " << coord.y << " " << coord.z << "\n";
     }
-    vtkFile << std::endl;
+    vtkFile << "\n";
 
-    vtkFile << "POINT_DATA " << particles.size() << std::endl;
+    vtkFile << "POINT_DATA " << particles.size() << "\n";
     // print velocities
-    vtkFile << "VECTORS velocities double" << std::endl;
+    vtkFile << "VECTORS velocities double" << "\n";
     for (int i = 0; i < particles.size(); ++i) {
         auto coord = particles[i].velocity;
-        vtkFile << coord.x << " " << coord.y << " " << coord.z << std::endl;
+        vtkFile << coord.x << " " << coord.y << " " << coord.z << "\n";
     }
-    vtkFile << std::endl;
+    vtkFile << "\n";
 
     // print Forces
-    vtkFile << "VECTORS forces double" << std::endl;
+    vtkFile << "VECTORS forces double" << "\n";
     for (int i = 0; i < particles.size(); ++i) {
         auto coord = particles[i].force;
-        vtkFile << coord.x << " " << coord.y << " " << coord.z << std::endl;
+        vtkFile << coord.x << " " << coord.y << " " << coord.z << "\n";
     }
-    vtkFile << std::endl;
+    vtkFile << "\n";
 
     // print TypeIDs
-    vtkFile << "SCALARS typeIds int" << std::endl;
-    vtkFile << "LOOKUP_TABLE default" << std::endl;
+    vtkFile << "SCALARS typeIds int" << "\n";
+    vtkFile << "LOOKUP_TABLE default" << "\n";
     for (int i = 0; i < particles.size(); ++i) {
-        vtkFile << particles[i].typeID << std::endl;
+        vtkFile << particles[i].typeID << "\n";
     }
-    vtkFile << std::endl;
+    vtkFile << "\n";
 
     // print ParticleIDs
-    vtkFile << "SCALARS particleIds int" << std::endl;
-    vtkFile << "LOOKUP_TABLE default" << std::endl;
+    vtkFile << "SCALARS particleIds int" << "\n";
+    vtkFile << "LOOKUP_TABLE default" << "\n";
     for (int i = 0; i < particles.size(); ++i) {
-        vtkFile << particles[i].particleID << std::endl;
+        vtkFile << particles[i].particleID << "\n";
     }
     vtkFile << std::endl;
     vtkFile.close();
