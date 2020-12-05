@@ -14,5 +14,5 @@ class ParticleProperties {
   ParticleProperties() : mass(0.0) {}
 
   KOKKOS_INLINE_FUNCTION
-  explicit ParticleProperties (double mass) : mass(mass) {}
+  explicit ParticleProperties(double mass) : mass(mass) {}
 };

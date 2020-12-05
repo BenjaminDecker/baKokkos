@@ -20,13 +20,13 @@ class CubeClosestPacked : public ParticleGroup {
   const Coord3D boxLength;
 
   CubeClosestPacked(int typeID,
-                 double spacing,
-                 Coord3D velocity,
-                 double particleEpsilon,
-                 double particleSigma,
-                 double particleMass,
-                 Coord3D bottomLeftCorner,
-                 Coord3D boxLength)
+                    double spacing,
+                    Coord3D velocity,
+                    double particleEpsilon,
+                    double particleSigma,
+                    double particleMass,
+                    Coord3D bottomLeftCorner,
+                    Coord3D boxLength)
       : ParticleGroup(typeID, spacing, velocity, particleEpsilon, particleSigma, particleMass),
         bottomLeftCorner(bottomLeftCorner),
         boxLength(boxLength) {}

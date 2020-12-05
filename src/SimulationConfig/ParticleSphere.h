@@ -70,8 +70,8 @@ class ParticleSphere : public ParticleGroup {
         cube(typeID, spacing, velocity, particleEpsilon, particleSigma, particleMass, bottomLeftCorner, boxLength);
     auto cubeParticles = cube.getParticles();
     std::vector<Particle> sphereParticles;
-    for(const auto &particle : cubeParticles) {
-      if(particle.position.distanceTo(center).absoluteValue() <= radius) {
+    for (const auto &particle : cubeParticles) {
+      if (particle.position.distanceTo(center).absoluteValue() <= radius) {
         Particle newParticle = particle;
         newParticle.particleID = startID++;
         sphereParticles.push_back(newParticle);

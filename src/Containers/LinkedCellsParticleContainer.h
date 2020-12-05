@@ -5,9 +5,9 @@
 #pragma once
 
 #include <array>
-#include "Particle.h"
+#include "../Types/Particle.h"
 #include "../SimulationConfig/SimulationConfig.h"
-#include "Cell.h"
+#include "../Types/Cell.h"
 #include "ParticleProperies.h"
 #include <Kokkos_UnorderedMap.hpp>
 
@@ -73,7 +73,7 @@ class LinkedCellsParticleContainer {
   const double cutoff;
   const int iterations;
 
-  std::array<Kokkos::View<int*>, 8> c08baseCells;
+  std::array<Kokkos::View<int *>, 8> c08baseCells;
 
 //  LinkedCellsParticleContainer() = default;
 
