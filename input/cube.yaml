@@ -11,6 +11,6 @@ Objects:
       particle-type              :  0
       particle-epsilon           :  1
       particle-sigma             :  1
-      particle-mass              :  1.79769e+308
+      particle-mass              :  1
 vtk-filename                     :  cube
 vtk-write-frequency              :  100

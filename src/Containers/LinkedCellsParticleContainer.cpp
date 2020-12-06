@@ -99,8 +99,7 @@ LinkedCellsParticleContainer::LinkedCellsParticleContainer(const SimulationConfi
         const int targetX = x == 0 ? numCellsX - 2 : x == numCellsX - 1 ? 1 : x;
         const int targetY = y == 0 ? numCellsY - 2 : y == numCellsY - 1 ? 1 : y;
         const int targetZ = z == 0 ? numCellsZ - 2 : z == numCellsZ - 1 ? 1 : z;
-        const int periodicTargetCellNumber = getCellNumberFromRelativeCellCoordinates(targetX, targetY,
-                                                                                      targetZ);
+        const int periodicTargetCellNumber = getCellNumberFromRelativeCellCoordinates(targetX, targetY, targetZ);
         Kokkos::parallel_for(1, KOKKOS_LAMBDA(int i) {
           periodicTargetCellNumbers(cellNumber) = periodicTargetCellNumber;
         });
@@ -210,6 +209,7 @@ void LinkedCellsParticleContainer::calculateForces() const {
     Kokkos::deep_copy(cells(cell).oldForces, cells(cell).forces);
   }
 
+  // Initialize new forces with the global force
   Kokkos::parallel_for(
       "resetForces",
       Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, numCells),
@@ -219,6 +219,20 @@ void LinkedCellsParticleContainer::calculateForces() const {
           cell.forces(index) = globalForce;
         }
       });
+
+  const auto calculator = [=](const Coord3D &distance) {
+    const double distanceValue = distance.absoluteValue();
+    const double distanceValuePow6 =
+        distanceValue * distanceValue * distanceValue * distanceValue * distanceValue *
+            distanceValue;
+    const double distanceValuePow13 = distanceValuePow6 * distanceValuePow6 * distanceValue;
+
+    // https://www.ableitungsrechner.net/#expr=4%2A%CE%B5%28%28%CF%83%2Fr%29%5E12-%28%CF%83%2Fr%29%5E6%29&diffvar=r
+    const double forceValue =
+        (twentyFourEpsilonSigmaPow6 * distanceValuePow6 - fourtyEightEpsilonSigmaPow12) /
+            distanceValuePow13;
+    return (distance * (forceValue / distanceValue));
+  };
 
   // Iterate over each cell in parallel
   Kokkos::parallel_for(
@@ -230,41 +244,59 @@ void LinkedCellsParticleContainer::calculateForces() const {
           return;
         }
         for (int neighbour = 0; neighbour < 27; ++neighbour) {
-          int neighbourCellNumber = neighbours(cellNumber, neighbour);
-          Coord3D offset = Coord3D();
+          const int neighbourCellNumber = neighbours(cellNumber, neighbour);
           if (cells(neighbourCellNumber).isHaloCell) {
             switch (condition) {
               case none:break;
               case periodic: {
                 const int periodicTargetCellNumber = periodicTargetCellNumbers(neighbourCellNumber);
-                offset = cells(neighbourCellNumber).bottomLeftCorner -
-                    cells(periodicTargetCellNumber).bottomLeftCorner;
-                neighbourCellNumber = periodicTargetCellNumber;
+                const Coord3D offset =
+                    cells(periodicTargetCellNumber).bottomLeftCorner.distanceTo(cells(neighbourCellNumber).bottomLeftCorner);
+                const Cell &neighbourCell = cells(periodicTargetCellNumber);
+                for (int id_1 = 0; id_1 < cell.size; ++id_1) {
+                  for (int id_2 = 0; id_2 < neighbourCell.size; ++id_2) {
+                    if (cell.particleIDs(id_1) == neighbourCell.particleIDs(id_2)) {
+                      continue;
+                    }
+                    cell.forces(id_1) += calculator(cell.positions(id_1).distanceTo(neighbourCell.positions(id_2) + offset));
+                  }
+                }
                 break;
               }
-              case reflecting:
-                // TODO
+              case reflecting: {
+                const Cell &neighbourCell = cells(neighbourCellNumber);
+                const Coord3D cellOffset = cell.bottomLeftCorner.distanceTo(neighbourCell.bottomLeftCorner);
+                // If more than one of the cells coordinates are different, the neighbour cell is an edge or a corner
+                if (std::abs(cellOffset.x) + std::abs(cellOffset.y) + std::abs(cellOffset.z) > cutoff) {
+                  continue;
+                }
+                for (int id = 0; id < cell.size; ++id) {
+                  const Coord3D position = cell.positions(id);
+                  Coord3D ghostPosition = position + cellOffset;
+                  if (cellOffset.x != 0) {
+                    ghostPosition.x = neighbourCell.bottomLeftCorner.x
+                        + (cutoff - (ghostPosition.x - neighbourCell.bottomLeftCorner.x));
+                  } else if (cellOffset.y != 0) {
+                    ghostPosition.y = neighbourCell.bottomLeftCorner.y
+                        + (cutoff - (ghostPosition.y - neighbourCell.bottomLeftCorner.y));
+                  } else if (cellOffset.z != 0) {
+                    ghostPosition.z = neighbourCell.bottomLeftCorner.z
+                        + (cutoff - (ghostPosition.z - neighbourCell.bottomLeftCorner.z));
+                  }
+                  cell.forces(id) += calculator(position.distanceTo(ghostPosition));
+                }
                 break;
+              }
             }
-          }
-          const Cell &neighbourCell = cells(neighbourCellNumber);
-          for (int id_1 = 0; id_1 < cell.size; ++id_1) {
-            for (int id_2 = 0; id_2 < neighbourCell.size; ++id_2) {
-              if (cell.particleIDs(id_1) == neighbourCell.particleIDs(id_2)) {
-                continue;
+          } else {
+            const Cell &neighbourCell = cells(neighbourCellNumber);
+            for (int id_1 = 0; id_1 < cell.size; ++id_1) {
+              for (int id_2 = 0; id_2 < neighbourCell.size; ++id_2) {
+                if (cell.particleIDs(id_1) == neighbourCell.particleIDs(id_2)) {
+                  continue;
+                }
+                cell.forces(id_1) += calculator(cell.positions(id_1).distanceTo(neighbourCell.positions(id_2)));
               }
-              Coord3D distance = cell.positions(id_1).distanceTo(neighbourCell.positions(id_2) + offset);
-              const double distanceValue = distance.absoluteValue();
-              const double distanceValuePow6 =
-                  distanceValue * distanceValue * distanceValue * distanceValue * distanceValue *
-                      distanceValue;
-              const double distanceValuePow13 = distanceValuePow6 * distanceValuePow6 * distanceValue;
-
-              // https://www.ableitungsrechner.net/#expr=4%2A%CE%B5%28%28%CF%83%2Fr%29%5E12-%28%CF%83%2Fr%29%5E6%29&diffvar=r
-              const double forceValue =
-                  (twentyFourEpsilonSigmaPow6 * distanceValuePow6 - fourtyEightEpsilonSigmaPow12) /
-                      distanceValuePow13;
-              cell.forces(id_1) += (distance * (forceValue / distanceValue));
             }
           }
         }
@@ -319,12 +351,9 @@ void LinkedCellsParticleContainer::moveParticles() const {
                 const int correctY = correctCoords[1];
                 const int correctZ = correctCoords[2];
                 particle.position += Coord3D(
-                    (correctX == 0 ? 1 : correctX == numCellsX - 1 ? -1 : 0) * cutoff *
-                        (numCellsX - 2),
-                    (correctY == 0 ? 1 : correctY == numCellsY - 1 ? -1 : 0) * cutoff *
-                        (numCellsY - 2),
-                    (correctZ == 0 ? 1 : correctZ == numCellsZ - 1 ? -1 : 0) * cutoff *
-                        (numCellsZ - 2)
+                    (correctX == 0 ? 1 : correctX == numCellsX - 1 ? -1 : 0) * cutoff * (numCellsX - 2),
+                    (correctY == 0 ? 1 : correctY == numCellsY - 1 ? -1 : 0) * cutoff * (numCellsY - 2),
+                    (correctZ == 0 ? 1 : correctZ == numCellsZ - 1 ? -1 : 0) * cutoff * (numCellsZ - 2)
                 );
                 addParticle(particle);
               }
@@ -354,9 +383,9 @@ std::array<int, 3> LinkedCellsParticleContainer::getRelativeCellCoordinates(int 
 std::vector<int> LinkedCellsParticleContainer::getNeighbourCellNumbers(int cellNumber) const {
   std::vector<int> neighbourNumbers;
   auto coords = getRelativeCellCoordinates(cellNumber);
-  for (int x = coords[0] - 1; x <= coords[0] + 1; ++x) {
+  for (int z = coords[2] - 1; z <= coords[2] + 1; ++z) {
     for (int y = coords[1] - 1; y <= coords[1] + 1; ++y) {
-      for (int z = coords[2] - 1; z <= coords[2] + 1; ++z) {
+      for (int x = coords[0] - 1; x <= coords[0] + 1; ++x) {
         if (0 <= x && x < numCellsX && 0 <= y && y < numCellsY && 0 <= z && z < numCellsZ) {
           neighbourNumbers.push_back(getCellNumberFromRelativeCellCoordinates(x, y, z));
         }

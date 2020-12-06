@@ -7,10 +7,10 @@ Objects:
       particles-per-dimension    :  [2, 2, 2]
       particle-spacing           :  1
       bottomLeftCorner           :  [0, 0, 0]
-      velocity                   :  [0, 1, 0]
+      velocity                   :  [1, 2, 3]
       particle-type              :  0
       particle-epsilon           :  1
       particle-sigma             :  1
-      particle-mass              :  1.79769e+308
+      particle-mass              :  1
 vtk-filename                     :  cube2
-vtk-write-frequency              :  100
+vtk-write-frequency              :  25
