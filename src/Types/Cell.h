@@ -10,25 +10,87 @@
 #include "Particle.h"
 
 constexpr int resizeFactor = 2;
-constexpr int numNeighbours = 26;
 
 class Cell {
  public:
   int size;
   int capacity;
-
   const bool isHaloCell;
   const Coord3D bottomLeftCorner;
-  Kokkos::View<Coord3D *> positions;
-  Kokkos::View<Coord3D *> velocities;
-  Kokkos::View<Coord3D *> forces;
-  Kokkos::View<Coord3D *> oldForces;
-  Kokkos::View<int *> particleIDs;
-  Kokkos::View<int *> typeIDs;
 
   KOKKOS_INLINE_FUNCTION
   Cell() : Cell(0, false, Coord3D()) {};
 
+#ifdef USE_AOS
+  KOKKOS_INLINE_FUNCTION
+  Cell(int capacity, bool isHaloCell, Coord3D bottomLeftCorner)
+      : size(0),
+        isHaloCell(isHaloCell),
+        bottomLeftCorner(bottomLeftCorner),
+        capacity(capacity),
+        particles(Kokkos::View<Particle *>(Kokkos::view_alloc("particles", Kokkos::WithoutInitializing), capacity)) {}
+
+  void addParticle(const Particle &particle) {
+    if (size == capacity) {
+      capacity *= 2;
+      Kokkos::resize(particles, capacity);
+    }
+    Kokkos::parallel_for("addParticle", 1, KOKKOS_LAMBDA(int i) {
+      particles(size) = particle;
+    });
+    ++size;
+  }
+
+  void removeParticle(int index) {
+    --size;
+    Kokkos::parallel_for("removeParticle", 1, KOKKOS_LAMBDA(int i) {
+      particles(index) = particles(size);
+    });
+  }
+
+  [[nodiscard]] std::vector<Particle> getParticles() const {
+    auto h_particles = Kokkos::create_mirror_view(particles);
+    std::vector<Particle> v_particles;
+    v_particles.reserve(size);
+    for (int i = 0; i < size; ++i) {
+      v_particles.push_back(h_particles(i));
+    }
+    return v_particles;
+  }
+
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION
+  Coord3D &positionAt(int index) const {
+    return particles(index).position;
+  }
+
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION
+  Coord3D &velocityAt(int index) const {
+    return particles(index).velocity;
+  }
+
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION
+  Coord3D &forceAt(int index) const {
+    return particles(index).force;
+  }
+
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION
+  Coord3D &oldForceAt(int index) const {
+    return particles(index).oldForce;
+  }
+
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION
+  int &particleIDAt(int index) const {
+    return particles(index).particleID;
+  }
+
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION
+  int &typeIDAt(int index) const {
+    return particles(index).typeID;
+  }
+
+ private:
+  Kokkos::View<Particle *> particles;
+#else
   KOKKOS_INLINE_FUNCTION
   Cell(int capacity, bool isHaloCell, Coord3D bottomLeftCorner)
       : size(0),
@@ -99,4 +161,43 @@ class Cell {
     }
     return particles;
   }
+
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION
+  Coord3D &positionAt(int index) const {
+    return positions(index);
+  }
+
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION
+  Coord3D &velocityAt(int index) const {
+    return velocities(index);
+  }
+
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION
+  Coord3D &forceAt(int index) const {
+    return forces(index);
+  }
+
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION
+  Coord3D &oldForceAt(int index) const {
+    return oldForces(index);
+  }
+
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION
+  int &particleIDAt(int index) const {
+    return particleIDs(index);
+  }
+
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION
+  int &typeIDAt(int index) const {
+    return typeIDs(index);
+  }
+
+ private:
+  Kokkos::View<Coord3D *> positions;
+  Kokkos::View<Coord3D *> velocities;
+  Kokkos::View<Coord3D *> forces;
+  Kokkos::View<Coord3D *> oldForces;
+  Kokkos::View<int *> particleIDs;
+  Kokkos::View<int *> typeIDs;
+#endif
 };

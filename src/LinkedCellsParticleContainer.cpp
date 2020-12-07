@@ -187,11 +187,11 @@ void LinkedCellsParticleContainer::calculatePositions() const {
       KOKKOS_LAMBDA(int cellNumber) {
         const Cell &cell = cells(cellNumber);
         for (int i = 0; i < cell.size; ++i) {
-          cell.positions(i) +=
-              cell.velocities(i) * deltaT + cell.forces(i) * ((deltaT * deltaT) /
+          cell.positionAt(i) +=
+              cell.velocityAt(i) * deltaT + cell.forceAt(i) * ((deltaT * deltaT) /
                   (2 * particleProperties.value_at(
                       particleProperties.find(
-                          cell.typeIDs(i))).mass));
+                          cell.typeIDAt(i))).mass));
         }
       });
 }
@@ -204,19 +204,15 @@ void LinkedCellsParticleContainer::calculateForces() const {
   const double twentyFourEpsilonSigmaPow6 = 24 * epsilon * sigmaPow6;
   const double fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
 
-  // Save oldForces
-  for (int cell = 0; cell < numCells; ++cell) {
-    Kokkos::deep_copy(cells(cell).oldForces, cells(cell).forces);
-  }
-
-  // Initialize new forces with the global force
+  // Save oldForces and initialize new forces
   Kokkos::parallel_for(
-      "resetForces",
+      "saveOldForce",
       Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, numCells),
-      KOKKOS_LAMBDA(int cellNumber) {
-        auto cell = cells(cellNumber);
-        for (int index = 0; index < cell.size; ++index) {
-          cell.forces(index) = globalForce;
+      KOKKOS_LAMBDA(int index) {
+        const Cell &cell = cells(index);
+        for (int i = 0; i < cell.size; ++i) {
+          cell.oldForceAt(i) = cell.forceAt(i);
+          cell.forceAt(i) = globalForce;
         }
       });
 
@@ -255,10 +251,11 @@ void LinkedCellsParticleContainer::calculateForces() const {
                 const Cell &neighbourCell = cells(periodicTargetCellNumber);
                 for (int id_1 = 0; id_1 < cell.size; ++id_1) {
                   for (int id_2 = 0; id_2 < neighbourCell.size; ++id_2) {
-                    if (cell.particleIDs(id_1) == neighbourCell.particleIDs(id_2)) {
+                    if (cell.particleIDAt(id_1) == neighbourCell.particleIDAt(id_2)) {
                       continue;
                     }
-                    cell.forces(id_1) += calculator(cell.positions(id_1).distanceTo(neighbourCell.positions(id_2) + offset));
+                    cell.forceAt(id_1) +=
+                        calculator(cell.positionAt(id_1).distanceTo(neighbourCell.positionAt(id_2) + offset));
                   }
                 }
                 break;
@@ -271,7 +268,7 @@ void LinkedCellsParticleContainer::calculateForces() const {
                   continue;
                 }
                 for (int id = 0; id < cell.size; ++id) {
-                  const Coord3D position = cell.positions(id);
+                  const Coord3D position = cell.positionAt(id);
                   Coord3D ghostPosition = position + cellOffset;
                   if (cellOffset.x != 0) {
                     ghostPosition.x = neighbourCell.bottomLeftCorner.x
@@ -283,7 +280,7 @@ void LinkedCellsParticleContainer::calculateForces() const {
                     ghostPosition.z = neighbourCell.bottomLeftCorner.z
                         + (cutoff - (ghostPosition.z - neighbourCell.bottomLeftCorner.z));
                   }
-                  cell.forces(id) += calculator(position.distanceTo(ghostPosition));
+                  cell.forceAt(id) += calculator(position.distanceTo(ghostPosition));
                 }
                 break;
               }
@@ -292,10 +289,10 @@ void LinkedCellsParticleContainer::calculateForces() const {
             const Cell &neighbourCell = cells(neighbourCellNumber);
             for (int id_1 = 0; id_1 < cell.size; ++id_1) {
               for (int id_2 = 0; id_2 < neighbourCell.size; ++id_2) {
-                if (cell.particleIDs(id_1) == neighbourCell.particleIDs(id_2)) {
+                if (cell.particleIDAt(id_1) == neighbourCell.particleIDAt(id_2)) {
                   continue;
                 }
-                cell.forces(id_1) += calculator(cell.positions(id_1).distanceTo(neighbourCell.positions(id_2)));
+                cell.forceAt(id_1) += calculator(cell.positionAt(id_1).distanceTo(neighbourCell.positionAt(id_2)));
               }
             }
           }
@@ -314,10 +311,10 @@ void LinkedCellsParticleContainer::calculateVelocities() const {
       KOKKOS_LAMBDA(int cellNumber) {
         const Cell &cell = cells(cellNumber);
         for (int i = 0; i < cell.size; ++i) {
-          cell.velocities(i) += (cell.forces(i) + cell.oldForces(i)) *
+          cell.velocityAt(i) += (cell.forceAt(i) + cell.oldForceAt(i)) *
               (deltaT /
                   (2 * particleProperties.value_at(
-                      particleProperties.find(cell.typeIDs(i))).mass));
+                      particleProperties.find(cell.typeIDAt(i))).mass));
         }
       });
 }

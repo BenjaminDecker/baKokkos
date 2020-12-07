@@ -3,6 +3,12 @@ project(baKokkos CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 
+option(USE_AOS "Use AoS structure for the cells instead of SoA" OFF)
+
+if (USE_AOS)
+    add_definitions(-DUSE_AOS)
+endif()
+
 include(FetchContent)
 FetchContent_Declare(
         kokkos
