@@ -5,10 +5,10 @@
 #pragma once
 
 #include <array>
-#include "../Types/Particle.h"
-#include "../SimulationConfig/SimulationConfig.h"
-#include "../Types/Cell.h"
-#include "ParticleProperies.h"
+#include "Types/Particle.h"
+#include "SimulationConfig/SimulationConfig.h"
+#include "Types/Cell.h"
+#include "Types/ParticleProperies.h"
 #include <Kokkos_UnorderedMap.hpp>
 
 #ifdef KOKKOS_ENABLE_CUDA

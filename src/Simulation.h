@@ -5,7 +5,7 @@
 #pragma once
 
 #include "SimulationConfig/SimulationConfig.h"
-#include "Containers/LinkedCellsParticleContainer.h"
+#include "LinkedCellsParticleContainer.h"
 #include <spdlog//spdlog.h>
 
 /**
