@@ -204,18 +204,6 @@ void LinkedCellsParticleContainer::calculateForces() const {
   const double twentyFourEpsilonSigmaPow6 = 24 * epsilon * sigmaPow6;
   const double fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
 
-  // Save oldForces and initialize new forces
-  Kokkos::parallel_for(
-      "saveOldForce",
-      Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, numCells),
-      KOKKOS_LAMBDA(int index) {
-        const Cell &cell = cells(index);
-        for (int i = 0; i < cell.size; ++i) {
-          cell.oldForceAt(i) = cell.forceAt(i);
-          cell.forceAt(i) = globalForce;
-        }
-      });
-
   const auto calculator = [=](const Coord3D &distance) {
     const double distanceValue = distance.absoluteValue();
     if (distanceValue > cutoff) {
@@ -233,11 +221,23 @@ void LinkedCellsParticleContainer::calculateForces() const {
     return (distance * (forceValue / distanceValue));
   };
 
-  // Iterate over each cell in parallel
+  // Save oldForces and initialize new forces
+  Kokkos::parallel_for(
+      "saveOldForce",
+      Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, numCells),
+      KOKKOS_LAMBDA(int index) {
+        const Cell &cell = cells(index);
+        for (int i = 0; i < cell.size; ++i) {
+          cell.oldForceAt(i) = cell.forceAt(i);
+          cell.forceAt(i) = globalForce;
+        }
+      });
+
   Kokkos::parallel_for(
       "calculateForces",
-      Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, numCells),
-      KOKKOS_LAMBDA(const int cellNumber) {
+      Kokkos::TeamPolicy<Kokkos::Schedule<Kokkos::Dynamic>>(numCells, Kokkos::AUTO),
+      KOKKOS_LAMBDA(const Kokkos::TeamPolicy<>::member_type &teamMember) {
+        const int cellNumber = teamMember.league_rank();
         const Cell &cell = cells(cellNumber);
         if (cell.isHaloCell) {
           return;
@@ -253,13 +253,15 @@ void LinkedCellsParticleContainer::calculateForces() const {
                     cells(periodicTargetCellNumber).bottomLeftCorner.distanceTo(cells(neighbourCellNumber).bottomLeftCorner);
                 const Cell &neighbourCell = cells(periodicTargetCellNumber);
                 for (int id_1 = 0; id_1 < cell.size; ++id_1) {
-                  for (int id_2 = 0; id_2 < neighbourCell.size; ++id_2) {
-                    if (cell.particleIDAt(id_1) == neighbourCell.particleIDAt(id_2)) {
-                      continue;
-                    }
-                    cell.forceAt(id_1) +=
-                        calculator(cell.positionAt(id_1).distanceTo(neighbourCell.positionAt(id_2) + offset));
-                  }
+                  Kokkos::parallel_for(
+                      Kokkos::ThreadVectorRange(teamMember, neighbourCell.size),
+                      [=](const int id_2) {
+                        if (cell.particleIDAt(id_1) != neighbourCell.particleIDAt(id_2)) {
+                          cell.forceAt(id_1) +=
+                              calculator(cell.positionAt(id_1).distanceTo(neighbourCell.positionAt(id_2) + offset));
+                        }
+                      }
+                  );
                 }
                 break;
               }
@@ -291,16 +293,89 @@ void LinkedCellsParticleContainer::calculateForces() const {
           } else {
             const Cell &neighbourCell = cells(neighbourCellNumber);
             for (int id_1 = 0; id_1 < cell.size; ++id_1) {
-              for (int id_2 = 0; id_2 < neighbourCell.size; ++id_2) {
-                if (cell.particleIDAt(id_1) == neighbourCell.particleIDAt(id_2)) {
-                  continue;
-                }
-                cell.forceAt(id_1) += calculator(cell.positionAt(id_1).distanceTo(neighbourCell.positionAt(id_2)));
-              }
+              Kokkos::parallel_for(
+                  Kokkos::ThreadVectorRange(teamMember, neighbourCell.size),
+                  [=](const int id_2) {
+                    if (cell.particleIDAt(id_1) != neighbourCell.particleIDAt(id_2)) {
+                      cell.forceAt(id_1) +=
+                          calculator(cell.positionAt(id_1).distanceTo(neighbourCell.positionAt(id_2)));
+                    }
+                  }
+              );
             }
           }
         }
-      });
+      }
+  );
+
+//  // Iterate over each cell in parallel
+//  Kokkos::parallel_for(
+//      "calculateForces",
+//      Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, numCells),
+//      KOKKOS_LAMBDA(const int cellNumber) {
+//        const Cell &cell = cells(cellNumber);
+//        if (cell.isHaloCell) {
+//          return;
+//        }
+//        for (int neighbour = 0; neighbour < 27; ++neighbour) {
+//          const int neighbourCellNumber = neighbours(cellNumber, neighbour);
+//          if (cells(neighbourCellNumber).isHaloCell) {
+//            switch (condition) {
+//              case none:break;
+//              case periodic: {
+//                const int periodicTargetCellNumber = periodicTargetCellNumbers(neighbourCellNumber);
+//                const Coord3D offset =
+//                    cells(periodicTargetCellNumber).bottomLeftCorner.distanceTo(cells(neighbourCellNumber).bottomLeftCorner);
+//                const Cell &neighbourCell = cells(periodicTargetCellNumber);
+//                for (int id_1 = 0; id_1 < cell.size; ++id_1) {
+//                  for (int id_2 = 0; id_2 < neighbourCell.size; ++id_2) {
+//                    if (cell.particleIDAt(id_1) == neighbourCell.particleIDAt(id_2)) {
+//                      continue;
+//                    }
+//                    cell.forceAt(id_1) +=
+//                        calculator(cell.positionAt(id_1).distanceTo(neighbourCell.positionAt(id_2) + offset));
+//                  }
+//                }
+//                break;
+//              }
+//              case reflecting: {
+//                const Cell &neighbourCell = cells(neighbourCellNumber);
+//                const Coord3D cellOffset = cell.bottomLeftCorner.distanceTo(neighbourCell.bottomLeftCorner);
+//                // If more than one of the cells coordinates are different, the neighbour cell is an edge or a corner
+//                if (std::abs(cellOffset.x) + std::abs(cellOffset.y) + std::abs(cellOffset.z) > cutoff) {
+//                  continue;
+//                }
+//                for (int id = 0; id < cell.size; ++id) {
+//                  const Coord3D position = cell.positionAt(id);
+//                  Coord3D ghostPosition = position + cellOffset;
+//                  if (cellOffset.x != 0) {
+//                    ghostPosition.x = neighbourCell.bottomLeftCorner.x
+//                        + (cutoff - (ghostPosition.x - neighbourCell.bottomLeftCorner.x));
+//                  } else if (cellOffset.y != 0) {
+//                    ghostPosition.y = neighbourCell.bottomLeftCorner.y
+//                        + (cutoff - (ghostPosition.y - neighbourCell.bottomLeftCorner.y));
+//                  } else if (cellOffset.z != 0) {
+//                    ghostPosition.z = neighbourCell.bottomLeftCorner.z
+//                        + (cutoff - (ghostPosition.z - neighbourCell.bottomLeftCorner.z));
+//                  }
+//                  cell.forceAt(id) += calculator(position.distanceTo(ghostPosition));
+//                }
+//                break;
+//              }
+//            }
+//          } else {
+//            const Cell &neighbourCell = cells(neighbourCellNumber);
+//            for (int id_1 = 0; id_1 < cell.size; ++id_1) {
+//              for (int id_2 = 0; id_2 < neighbourCell.size; ++id_2) {
+//                if (cell.particleIDAt(id_1) == neighbourCell.particleIDAt(id_2)) {
+//                  continue;
+//                }
+//                cell.forceAt(id_1) += calculator(cell.positionAt(id_1).distanceTo(neighbourCell.positionAt(id_2)));
+//              }
+//            }
+//          }
+//        }
+//      });
 }
 
 void LinkedCellsParticleContainer::calculateForcesNewton3() const {
