@@ -218,6 +218,9 @@ void LinkedCellsParticleContainer::calculateForces() const {
 
   const auto calculator = [=](const Coord3D &distance) {
     const double distanceValue = distance.absoluteValue();
+    if (distanceValue > cutoff) {
+      return Coord3D();
+    }
     const double distanceValuePow6 =
         distanceValue * distanceValue * distanceValue * distanceValue * distanceValue *
             distanceValue;
