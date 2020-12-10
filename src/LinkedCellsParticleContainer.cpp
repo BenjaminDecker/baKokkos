@@ -254,8 +254,8 @@ void LinkedCellsParticleContainer::calculateForces() const {
                 const Cell &neighbourCell = cells(periodicTargetCellNumber);
                 for (int id_1 = 0; id_1 < cell.size; ++id_1) {
                   Kokkos::parallel_for(
-                      Kokkos::ThreadVectorRange(teamMember, neighbourCell.size),
-                      [=](const int id_2) {
+                      Kokkos::TeamVectorRange(teamMember, neighbourCell.size),
+                      [&](const int id_2) {
                         if (cell.particleIDAt(id_1) != neighbourCell.particleIDAt(id_2)) {
                           cell.forceAt(id_1) +=
                               calculator(cell.positionAt(id_1).distanceTo(neighbourCell.positionAt(id_2) + offset));
@@ -294,8 +294,8 @@ void LinkedCellsParticleContainer::calculateForces() const {
             const Cell &neighbourCell = cells(neighbourCellNumber);
             for (int id_1 = 0; id_1 < cell.size; ++id_1) {
               Kokkos::parallel_for(
-                  Kokkos::ThreadVectorRange(teamMember, neighbourCell.size),
-                  [=](const int id_2) {
+                  Kokkos::TeamVectorRange(teamMember, neighbourCell.size),
+                  [&](const int id_2) {
                     if (cell.particleIDAt(id_1) != neighbourCell.particleIDAt(id_2)) {
                       cell.forceAt(id_1) +=
                           calculator(cell.positionAt(id_1).distanceTo(neighbourCell.positionAt(id_2)));
