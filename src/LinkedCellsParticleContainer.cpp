@@ -297,8 +297,10 @@ void LinkedCellsParticleContainer::calculateForces() const {
                   Kokkos::TeamVectorRange(teamMember, neighbourCell.size),
                   [&](const int id_2) {
                     if (cell.particleIDAt(id_1) != neighbourCell.particleIDAt(id_2)) {
-                      cell.forceAt(id_1) +=
-                          calculator(cell.positionAt(id_1).distanceTo(neighbourCell.positionAt(id_2)));
+                      Kokkos::single(Kokkos::PerTeam(teamMember), [&] {
+                        cell.forceAt(id_1) +=
+                            calculator(cell.positionAt(id_1).distanceTo(neighbourCell.positionAt(id_2)));
+                      });
                     }
                   }
               );
