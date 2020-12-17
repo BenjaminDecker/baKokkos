@@ -75,8 +75,6 @@ class LinkedCellsParticleContainer {
 
   std::array<Kokkos::View<int *>, 8> c08baseCells;
 
-//  LinkedCellsParticleContainer() = default;
-
   /**
    * @brief Initialises particles
    * @param parser stores particle information from a .yaml file

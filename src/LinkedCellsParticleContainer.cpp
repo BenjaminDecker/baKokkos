@@ -235,9 +235,8 @@ void LinkedCellsParticleContainer::calculateForces() const {
 
   Kokkos::parallel_for(
       "calculateForces",
-      Kokkos::TeamPolicy<Kokkos::Schedule<Kokkos::Dynamic>>(numCells, Kokkos::AUTO),
-      KOKKOS_LAMBDA(const Kokkos::TeamPolicy<>::member_type &teamMember) {
-        const int cellNumber = teamMember.league_rank();
+      Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, numCells),
+      KOKKOS_LAMBDA(const int cellNumber) {
         const Cell &cell = cells(cellNumber);
         if (cell.isHaloCell) {
           return;
@@ -253,15 +252,12 @@ void LinkedCellsParticleContainer::calculateForces() const {
                     cells(periodicTargetCellNumber).bottomLeftCorner.distanceTo(cells(neighbourCellNumber).bottomLeftCorner);
                 const Cell &neighbourCell = cells(periodicTargetCellNumber);
                 for (int id_1 = 0; id_1 < cell.size; ++id_1) {
-                  Kokkos::parallel_for(
-                      Kokkos::TeamVectorRange(teamMember, neighbourCell.size),
-                      [&](const int id_2) {
-                        if (cell.particleIDAt(id_1) != neighbourCell.particleIDAt(id_2)) {
-                          cell.forceAt(id_1) +=
-                              calculator(cell.positionAt(id_1).distanceTo(neighbourCell.positionAt(id_2) + offset));
-                        }
-                      }
-                  );
+                  for (int id_2 = 0; id_2 < neighbourCell.size; ++id_2) {
+                    if (cell.particleIDAt(id_1) != neighbourCell.particleIDAt(id_2)) {
+                      cell.forceAt(id_1) +=
+                          calculator(cell.positionAt(id_1).distanceTo(neighbourCell.positionAt(id_2) + offset));
+                    }
+                  }
                 }
                 break;
               }
@@ -293,17 +289,12 @@ void LinkedCellsParticleContainer::calculateForces() const {
           } else {
             const Cell &neighbourCell = cells(neighbourCellNumber);
             for (int id_1 = 0; id_1 < cell.size; ++id_1) {
-              Kokkos::parallel_for(
-                  Kokkos::TeamVectorRange(teamMember, neighbourCell.size),
-                  [&](const int id_2) {
-                    if (cell.particleIDAt(id_1) != neighbourCell.particleIDAt(id_2)) {
-                      Kokkos::single(Kokkos::PerTeam(teamMember), [&] {
-                        cell.forceAt(id_1) +=
-                            calculator(cell.positionAt(id_1).distanceTo(neighbourCell.positionAt(id_2)));
-                      });
-                    }
-                  }
-              );
+              for (int id_2 = 0; id_2 < neighbourCell.size; ++id_2) {
+                if (cell.particleIDAt(id_1) != neighbourCell.particleIDAt(id_2)) {
+                  cell.forceAt(id_1) +=
+                      calculator(cell.positionAt(id_1).distanceTo(neighbourCell.positionAt(id_2)));
+                }
+              }
             }
           }
         }
