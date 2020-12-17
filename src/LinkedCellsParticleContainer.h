@@ -38,7 +38,7 @@ typedef Kokkos::View<Cell *, SharedSpace> CellsViewType;
 // TODO
 constexpr enum BoundaryCondition {
   none, periodic, reflecting
-} condition(reflecting);
+} condition(none);
 
 /**
  * @brief Saves particles inside of cells that make up the simulation space
