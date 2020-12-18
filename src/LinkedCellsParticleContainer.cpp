@@ -387,7 +387,7 @@ void LinkedCellsParticleContainer::calculateForcesNewton3() const {
               relativeCoords[2] == numCellsZ - 1) {
             return;
           }
-            const Cell &baseCell = cells(baseCellNumber);
+          const Cell &baseCell = cells(baseCellNumber);
           for (int id_1 = 0; id_1 < baseCell.size; ++id_1) {
             for (int id_2 = id_1 + 1; id_2 < baseCell.size; ++id_2) {
               const Coord3D actingForce = calculator(baseCell.positionAt(id_1).distanceTo(baseCell.positionAt(id_2)));
@@ -396,28 +396,68 @@ void LinkedCellsParticleContainer::calculateForcesNewton3() const {
             }
           }
           for (int pairNumber = 0; pairNumber < 13; ++pairNumber) {
-            const Cell &cellOne = cells(c08Pairs(baseCellNumber, pairNumber).first);
-            const Cell &cellTwo = cells(c08Pairs(baseCellNumber, pairNumber).second);
-            for (int id_1 = 0; id_1 < cellOne.size; ++id_1) {
-              for (int id_2 = 0; id_2 < cellTwo.size; ++id_2) {
-                const Coord3D actingForce = calculator(cellOne.positionAt(id_1).distanceTo(cellTwo.positionAt(id_2)));
-                cellOne.forceAt(id_1) += actingForce;
-                cellTwo.forceAt(id_2) += actingForce * (-1);
+            const int cellOneNumber = c08Pairs(baseCellNumber, pairNumber).first;
+            const int cellTwoNumber = c08Pairs(baseCellNumber, pairNumber).second;
+            const Cell &cellOne = cells(cellOneNumber);
+            const Cell &cellTwo = cells(cellTwoNumber);
+            if (!cellOne.isHaloCell && !cellTwo.isHaloCell) {
+              for (int id_1 = 0; id_1 < cellOne.size; ++id_1) {
+                for (int id_2 = 0; id_2 < cellTwo.size; ++id_2) {
+                  const Coord3D actingForce = calculator(cellOne.positionAt(id_1).distanceTo(cellTwo.positionAt(id_2)));
+                  cellOne.forceAt(id_1) += actingForce;
+                  cellTwo.forceAt(id_2) += actingForce * (-1);
+                }
+              }
+            } else {
+              if (cellOne.isHaloCell && cellTwo.isHaloCell) {
+                continue;
+              }
+              const int normalCellNumber = cellOne.isHaloCell ? cellTwoNumber : cellOneNumber;
+              const int haloCellNumber = cellOne.isHaloCell ? cellOneNumber : cellTwoNumber;
+              const Cell &normalCell = cells(normalCellNumber);
+              const Cell &haloCell = cells(haloCellNumber);
+              switch (condition) {
+                case none:break;
+                case periodic: {
+                  const Cell &periodicTargetCell = cells(periodicTargetCellNumbers(haloCellNumber));
+                  const Coord3D offset = periodicTargetCell.bottomLeftCorner.distanceTo(haloCell.bottomLeftCorner);
+                  for (int id_1 = 0; id_1 < normalCell.size; ++id_1) {
+                    for (int id_2 = 0; id_2 < periodicTargetCell.size; ++id_2) {
+                      normalCell.forceAt(id_1) += calculator(normalCell.positionAt(id_1).distanceTo(
+                          periodicTargetCell.positionAt(id_2) + offset)
+                      );
+                    }
+                  }
+                  break;
+                }
+                case reflecting: {
+                  const Coord3D offset = normalCell.bottomLeftCorner.distanceTo(haloCell.bottomLeftCorner);
+                  if (std::abs(offset.x) + std::abs(offset.y) + std::abs(offset.z) > cutoff) {
+                    continue;
+                  }
+                  for (int id = 0; id < normalCell.size; ++id) {
+                    const Coord3D position = normalCell.positionAt(id);
+                    Coord3D ghostPosition = position + offset;
+                    if (offset.x != 0) {
+                      ghostPosition.x = haloCell.bottomLeftCorner.x
+                          + (cutoff - (ghostPosition.x - haloCell.bottomLeftCorner.x));
+                    } else if (offset.y != 0) {
+                      ghostPosition.y = haloCell.bottomLeftCorner.y
+                          + (cutoff - (ghostPosition.y - haloCell.bottomLeftCorner.y));
+                    } else if (offset.z != 0) {
+                      ghostPosition.z = haloCell.bottomLeftCorner.z
+                          + (cutoff - (ghostPosition.z - haloCell.bottomLeftCorner.z));
+                    }
+                    normalCell.forceAt(id) += calculator(position.distanceTo(ghostPosition));
+                  }
+                  break;
+                }
               }
             }
           }
         }
     );
   }
-
-  Kokkos::parallel_for(
-      "calculateForces",
-      Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, numCells),
-      KOKKOS_LAMBDA(const int cellNumber) {
-
-      }
-  );
-
 }
 
 void LinkedCellsParticleContainer::calculateVelocities() const {
