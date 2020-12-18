@@ -74,6 +74,7 @@ class LinkedCellsParticleContainer {
   const int iterations;
 
   std::array<Kokkos::View<int *>, 8> c08baseCells;
+  Kokkos::View<std::pair<int, int>*[13]> c08Pairs;
 
   /**
    * @brief Initialises particles
