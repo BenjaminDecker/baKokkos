@@ -89,7 +89,7 @@ class Simulation {
     Kokkos::Timer timer;
 
     //Iteration loop
-    for (; iteration < 10000; ++iteration) {
+    for (; iteration < config.iterations; ++iteration) {
       if (iteration % 1000 == 0) {
         spdlog::info("Iteration: {:0" + std::to_string(std::to_string(config.iterations).length()) + "d}", iteration);
       }
@@ -106,7 +106,10 @@ class Simulation {
     spdlog::info("Finished simulating. Time: " + std::to_string(time) + " seconds.");
   }
 
+  /// This method finds the correct cell and inserts @param particle into it
   void addParticle(const Particle &particle) const;
+
+  /// This method adds all particles from all cells into one std::vector and returns it
   [[nodiscard]] std::vector<Particle> getParticles() const;
 
  private:
