@@ -143,19 +143,20 @@ static std::ostream &operator<<(std::ostream &stream, const SimulationConfig &ob
     case SimulationConfig::LinkedCells:stream << "LinkedCells";
       break;
   }
-  stream << std::endl;
-  stream << "iterations: " << obj.iterations << std::endl;
-  stream << "deltaT: " << obj.deltaT << std::endl;
-  stream << "cutoff: " << obj.cutoff << std::endl;
-  stream << "globalForce: " << obj.globalForce << std::endl;
+  stream << "\n";
+  stream << "iterations: " << obj.iterations << "\n";
+  stream << "deltaT: " << obj.deltaT << "\n";
+  stream << "cutoff: " << obj.cutoff << "\n";
+  stream << "globalForce: " << obj.globalForce << "\n";
   if (obj.box) {
     stream << "box:" << std::endl;
-    stream << "  box-min: " << obj.box.value().first << std::endl;
-    stream << "  box-max: " << obj.box.value().second << std::endl;
+    stream << "  box-min: " << obj.box.value().first << "\n";
+    stream << "  box-max: " << obj.box.value().second << "\n";
   }
   if (obj.vtk) {
-    stream << "vtk-filename: " << obj.vtk.value().first << ".vtk" << std::endl;
-    stream << "vtk-write-frequency: " << obj.vtk.value().second << std::endl;
+    stream << "vtk-filename: " << obj.vtk.value().first << ".vtk" << "\n";
+    stream << "vtk-write-frequency: " << obj.vtk.value().second << "\n";
   }
+  stream.flush();
   return stream;
 }

@@ -1,161 +1,201 @@
 //
-// Created by Benjamin Decker on 08.11.20.
+// Created by Benjamin Decker on 29.12.20.
 //
 
-#include "LinkedCellsParticleContainer.h"
-#include <spdlog/spdlog.h>
+#include "Simulation.h"
 #include <iomanip>
 #include <fstream>
 
-LinkedCellsParticleContainer::LinkedCellsParticleContainer(const SimulationConfig &config)
-    : vtk(config.vtk),
-      deltaT(config.deltaT),
-      globalForce(config.globalForce),
-      cutoff(config.cutoff),
-      iterations(config.iterations),
-      iteration(0) {
-  std::cout << "Using the following simulation configuration:" << std::endl << std::endl << config << std::endl
-            << std::endl;
+Simulation::Simulation(const SimulationConfig &config) : config(config), iteration(0) {
+  std::cout << "Using the following simulation configuration:\n\n" << config << "\n" << std::endl;
   spdlog::info("Initializing particles...");
   Kokkos::Timer timer;
+
   std::vector<Particle> particles;
-  particleProperties = Kokkos::UnorderedMap<int, ParticleProperties>(config.particleGroups.size());
-  for (const auto &particleGroup : config.particleGroups) {
-    const int typeID = particleGroup->typeID;
-    const ParticleProperties pp(particleGroup->particleMass);
-    Kokkos::parallel_for("add particle properties", 1, KOKKOS_LAMBDA(int i) {
-      if (!particleProperties.exists(typeID)) {
-        particleProperties.insert(typeID, pp);
-      }
-    });
-    const auto newParticles = particleGroup->getParticles(particles.size());
-    for (const auto &particle : newParticles) {
-      particles.push_back(particle);
-    }
-  }
-  if (config.box) {
-    boxMin = config.box.value().first;
-    boxMax = config.box.value().second;
-  } else {
-    double lowestX = particles[0].position.x;
-    double lowestY = particles[0].position.y;
-    double lowestZ = particles[0].position.z;
-    double highestX = particles[0].position.x;
-    double highestY = particles[0].position.y;
-    double highestZ = particles[0].position.z;
-    Coord3D midPoint = Coord3D();
-    for (auto &particle : particles) {
-      lowestX = std::min(lowestX, particle.position.x);
-      lowestY = std::min(lowestY, particle.position.y);
-      lowestZ = std::min(lowestZ, particle.position.z);
-      highestX = std::max(highestX, particle.position.x);
-      highestY = std::max(highestY, particle.position.y);
-      highestZ = std::max(highestZ, particle.position.z);
-      midPoint += particle.position;
-    }
-    midPoint /= particles.size();
-    boxMin = midPoint - Coord3D(config.cutoff, config.cutoff, config.cutoff);
-    boxMax = midPoint;
-    while (lowestX < boxMin.x) {
-      boxMin = boxMin - Coord3D(config.cutoff, 0, 0);
-    }
-    while (boxMax.x + config.cutoff < highestX) {
-      boxMax = boxMax + Coord3D(config.cutoff, 0, 0);
-    }
-    while (lowestY < boxMin.y) {
-      boxMin = boxMin - Coord3D(0, config.cutoff, 0);
-    }
-    while (boxMax.y + config.cutoff < highestY) {
-      boxMax = boxMax + Coord3D(0, config.cutoff, 0);
-    }
-    while (lowestZ < boxMin.z) {
-      boxMin = boxMin - Coord3D(0, 0, config.cutoff);
-    }
-    while (boxMax.z + config.cutoff < highestZ) {
-      boxMax = boxMax + Coord3D(0, 0, config.cutoff);
-    }
-  }
-  boxMin = boxMin - Coord3D(config.cutoff, config.cutoff, config.cutoff);
-  boxMax = boxMax + Coord3D(config.cutoff, config.cutoff, config.cutoff);
 
-  Coord3D boxSize = boxMax - boxMin + Coord3D(config.cutoff, config.cutoff, config.cutoff);
-  numCellsX = static_cast<int>((boxSize.x + 0.5 * config.cutoff) / config.cutoff);
-  numCellsY = static_cast<int>((boxSize.y + 0.5 * config.cutoff) / config.cutoff);
-  numCellsZ = static_cast<int>((boxSize.z + 0.5 * config.cutoff) / config.cutoff);
-  numCells = numCellsX * numCellsY * numCellsZ;
-
-  cells = CellsViewType(Kokkos::view_alloc(std::string("Cells"), Kokkos::WithoutInitializing), numCells);
-
-  periodicTargetCellNumbers = Kokkos::View<int *>("periodicTargetCellNumbers", numCells);
-
-  for (int x = 0; x < numCellsX; ++x) {
-    for (int y = 0; y < numCellsY; ++y) {
-      for (int z = 0; z < numCellsZ; ++z) {
-        const bool isHaloCell =
-            x == 0 || x == numCellsX - 1 || y == 0 || y == numCellsY - 1 || z == 0 || z == numCellsZ - 1;
-        Coord3D bottomLeftCorner = boxMin + Coord3D(x, y, z) * config.cutoff;
-        const int cellNumber = getCellNumberFromRelativeCellCoordinates(x, y, z);
-        new(&cells[cellNumber]) Cell(1, isHaloCell, bottomLeftCorner);
-        const int targetX = x == 0 ? numCellsX - 2 : x == numCellsX - 1 ? 1 : x;
-        const int targetY = y == 0 ? numCellsY - 2 : y == numCellsY - 1 ? 1 : y;
-        const int targetZ = z == 0 ? numCellsZ - 2 : z == numCellsZ - 1 ? 1 : z;
-        const int periodicTargetCellNumber = getCellNumberFromRelativeCellCoordinates(targetX, targetY, targetZ);
-        Kokkos::parallel_for(1, KOKKOS_LAMBDA(int i) {
-          periodicTargetCellNumbers(cellNumber) = periodicTargetCellNumber;
-        });
+  /*
+   * All particles are extracted from the particle groups and saved inside an std::vector. At the same time the
+   * Kokkos::UnorderedMap particleProperties is constructed and filled with all new particleTypes. The size of the map
+   * is set to the amount of particleGroups as this is the maximum possible amount of different particleTypes for the
+   * simulation. In reality, this number is a lot smaller because many particleGroups will have the same particleType.
+   */
+  {
+    particleProperties = Kokkos::UnorderedMap<int, ParticleProperties>(config.particleGroups.size());
+    for (const auto &particleGroup : config.particleGroups) {
+      const int typeID = particleGroup->typeID;
+      const ParticleProperties pp(particleGroup->particleMass);
+      Kokkos::parallel_for("add particle properties", 1, KOKKOS_LAMBDA(int i) {
+        if (!particleProperties.exists(typeID)) {
+          particleProperties.insert(typeID, pp);
+        }
+      });
+      const auto newParticles = particleGroup->getParticles(particles.size());
+      for (const auto &particle : newParticles) {
+        particles.push_back(particle);
       }
     }
   }
 
-  for (auto &particle : particles) {
-    addParticle(particle);
-  }
-
-  neighbours = Kokkos::View<int *[27]>("neighbours", cells.size());
-  const auto h_neighbours = Kokkos::create_mirror_view(neighbours);
-  for (int i = 0; i < numCells; ++i) {
-    std::vector<int> neighbourNumbers = getNeighbourCellNumbers(i);
-    for (int k = 0; k < neighbourNumbers.size(); ++k) {
-      h_neighbours(i, k) = neighbourNumbers[k];
-    }
-    for (int k = neighbourNumbers.size(); k < 27; ++k) {
-      h_neighbours(i, k) = -1;
-    }
-  }
-  Kokkos::deep_copy(neighbours, h_neighbours);
-
-  std::vector<std::vector<int>> c08baseCellsVec;
-  c08baseCellsVec.resize(8);
-  for (int x = 0; x < numCellsX; ++x) {
-    for (int y = 0; y < numCellsY; ++y) {
-      for (int z = 0; z < numCellsZ; ++z) {
-        const int cellNumber = getCellNumberFromRelativeCellCoordinates(x, y, z);
-        c08baseCellsVec[getCellColor(cellNumber)].push_back(cellNumber);
+  /*
+   * If values for the size of the simulation space are given, they are used. Otherwise size values are created by
+   * starting with one cell that is positioned at the mean position of all particles. Afterwards, more cells are added
+   * in all 3 spacial directions until the cells together contain all particles. The cells are added in all 3 directions
+   * separately, so the simulation space is not necessarily a cube, but always a cuboid.
+   */
+  {
+    if (config.box) {
+      boxMin = config.box.value().first;
+      boxMax = config.box.value().second;
+    } else {
+      double lowestX = particles[0].position.x;
+      double lowestY = particles[0].position.y;
+      double lowestZ = particles[0].position.z;
+      double highestX = particles[0].position.x;
+      double highestY = particles[0].position.y;
+      double highestZ = particles[0].position.z;
+      Coord3D midPoint = Coord3D();
+      for (auto &particle : particles) {
+        lowestX = std::min(lowestX, particle.position.x);
+        lowestY = std::min(lowestY, particle.position.y);
+        lowestZ = std::min(lowestZ, particle.position.z);
+        highestX = std::max(highestX, particle.position.x);
+        highestY = std::max(highestY, particle.position.y);
+        highestZ = std::max(highestZ, particle.position.z);
+        midPoint += particle.position;
+      }
+      midPoint /= particles.size();
+      boxMin = midPoint - Coord3D(config.cutoff, config.cutoff, config.cutoff);
+      boxMax = midPoint;
+      while (lowestX < boxMin.x) {
+        boxMin = boxMin - Coord3D(config.cutoff, 0, 0);
+      }
+      while (boxMax.x + config.cutoff < highestX) {
+        boxMax = boxMax + Coord3D(config.cutoff, 0, 0);
+      }
+      while (lowestY < boxMin.y) {
+        boxMin = boxMin - Coord3D(0, config.cutoff, 0);
+      }
+      while (boxMax.y + config.cutoff < highestY) {
+        boxMax = boxMax + Coord3D(0, config.cutoff, 0);
+      }
+      while (lowestZ < boxMin.z) {
+        boxMin = boxMin - Coord3D(0, 0, config.cutoff);
+      }
+      while (boxMax.z + config.cutoff < highestZ) {
+        boxMax = boxMax + Coord3D(0, 0, config.cutoff);
       }
     }
+
+    // A one cell wide layer of empty cells is added around the simulation space to act as halo cells in the simulation.
+    boxMin = boxMin - Coord3D(config.cutoff, config.cutoff, config.cutoff);
+    boxMax = boxMax + Coord3D(config.cutoff, config.cutoff, config.cutoff);
+
+    // The total size of the simulation, and with it the number of cells is calculated.
+    const Coord3D boxSize = boxMax - boxMin + Coord3D(config.cutoff, config.cutoff, config.cutoff);
+    numCellsX = static_cast<int>((boxSize.x + 0.5 * config.cutoff) / config.cutoff);
+    numCellsY = static_cast<int>((boxSize.y + 0.5 * config.cutoff) / config.cutoff);
+    numCellsZ = static_cast<int>((boxSize.z + 0.5 * config.cutoff) / config.cutoff);
+    numCells = numCellsX * numCellsY * numCellsZ;
   }
 
-  for (int i = 0; i < c08baseCellsVec.size(); ++i) {
-    const int size = c08baseCellsVec[i].size();
-    c08baseCells[i] = Kokkos::View<int *>("c08baseCells " + std::to_string(i), size);
-    const auto h_c08BaseCells = Kokkos::create_mirror_view(c08baseCells[i]);
-    for (int k = 0; k < size; ++k) {
-      h_c08BaseCells(k) = c08baseCellsVec[i][k];
+  /*
+   * The cells and periodicTargetCellNumbers views are initialized to the correct size. The periodicTargetCellNumbers
+   * view will only be used if periodic boundary conditions are used in the simulation, but is still always created. It
+   * has a size of numCells, although it only needs to store information for the halo cells. Both actions do not create
+   * too much computational overhead, while simplifying the code a lot.
+   * The cells view has to be created with the Kokkos::WithoutInitializing flag because it will contain other views.
+   */
+  {
+    cells = CellsViewType(Kokkos::view_alloc(std::string("Cells"), Kokkos::WithoutInitializing), numCells);
+    periodicTargetCellNumbers = Kokkos::View<int *>("periodicTargetCellNumbers", numCells);
+    auto h_periodicTargetCellNumbers = Kokkos::create_mirror_view(periodicTargetCellNumbers);
+
+    // All necessary cells are created and saved in the cells view.
+    for (int x = 0; x < numCellsX; ++x) {
+      for (int y = 0; y < numCellsY; ++y) {
+        for (int z = 0; z < numCellsZ; ++z) {
+          //TODO maybe delete this
+          const bool isHaloCell =
+              x == 0 || x == numCellsX - 1 || y == 0 || y == numCellsY - 1 || z == 0 || z == numCellsZ - 1;
+          const Coord3D bottomLeftCorner = boxMin + Coord3D(x, y, z) * config.cutoff;
+          const int cellNumber = getCellNumberFromRelativeCellCoordinates(x, y, z);
+
+          // The cells have to be saved via the new operator because they are views inside of views.
+          new(&cells[cellNumber]) Cell(1, isHaloCell, bottomLeftCorner);
+
+          // For non-halo cells the periodicTargetCellNumber is equal to the cellNumber. For halo cells they are different.
+          const int targetX = x == 0 ? numCellsX - 2 : x == numCellsX - 1 ? 1 : x;
+          const int targetY = y == 0 ? numCellsY - 2 : y == numCellsY - 1 ? 1 : y;
+          const int targetZ = z == 0 ? numCellsZ - 2 : z == numCellsZ - 1 ? 1 : z;
+          const int periodicTargetCellNumber = getCellNumberFromRelativeCellCoordinates(targetX, targetY, targetZ);
+          h_periodicTargetCellNumbers(cellNumber) = periodicTargetCellNumber;
+        }
+      }
     }
-    Kokkos::deep_copy(c08baseCells[i], h_c08BaseCells);
+    Kokkos::deep_copy(periodicTargetCellNumbers, h_periodicTargetCellNumbers);
   }
 
-  c08Pairs = Kokkos::View<std::pair<int, int> *[13]>("c08Pairs", numCells);
-  auto h_c08Pairs = Kokkos::create_mirror_view(c08Pairs);
-  for (int cellNumber = 0; cellNumber < numCells; ++cellNumber) {
-    auto coords = getRelativeCellCoordinates(cellNumber);
-    int index = 0;
-    for (int x = coords[0] - 1; x < coords[0] + 2; ++x) {
-      for (int y = coords[1] - 1; y < coords[1] + 2; ++y) {
-        for (int z = coords[2] - 1; z < coords[2] + 2; ++z) {
-          if (cellNumber < getCellNumberFromRelativeCellCoordinates(x, y, z)) {
+  // For each cell, the neighbours view is filled with the cell numbers of its neighbours.
+  {
+    neighbours = Kokkos::View<int *[27]>("neighbours", cells.size());
+    const auto h_neighbours = Kokkos::create_mirror_view(neighbours);
+    for (int i = 0; i < numCells; ++i) {
+      std::vector<int> neighbourNumbers = getNeighbourCellNumbers(i);
+      for (int k = 0; k < neighbourNumbers.size(); ++k) {
+        h_neighbours(i, k) = neighbourNumbers[k];
+      }
+      for (int k = neighbourNumbers.size(); k < 27; ++k) {
+        h_neighbours(i, k) = -1;
+      }
+    }
+    Kokkos::deep_copy(neighbours, h_neighbours);
+  }
+
+  {
+    // The cellNumbers are sorted into 8 std::vectors representing the 8 different colors of the c08 cell coloring.
+    std::vector<std::vector<int>> c08baseCellsVec;
+    c08baseCellsVec.resize(8);
+    for (int cellNumber = 0; cellNumber < numCells; ++cellNumber) {
+      c08baseCellsVec[getCellColor(cellNumber)].push_back(cellNumber);
+    }
+
+    /*
+     * For each of the 8 vectors of cellNumbers representing the different colors, the base cell numbers are saved into
+     * the corresponding view.
+     */
+    for (int i = 0; i < c08baseCellsVec.size(); ++i) {
+      const int size = c08baseCellsVec[i].size();
+      c08baseCells[i] = Kokkos::View<int *>("c08baseCells " + std::to_string(i), size);
+      const auto h_c08BaseCells = Kokkos::create_mirror_view(c08baseCells[i]);
+      for (int k = 0; k < size; ++k) {
+        h_c08BaseCells(k) = c08baseCellsVec[i][k];
+      }
+      Kokkos::deep_copy(c08baseCells[i], h_c08BaseCells);
+    }
+  }
+
+
+  // For each c08 base cell, all cell pairs for force interactions are saved into the c08Pairs view.
+  {
+    c08Pairs = Kokkos::View<std::pair<int, int> *[13]>("c08Pairs", numCells);
+    auto h_c08Pairs = Kokkos::create_mirror_view(c08Pairs);
+    for (int cellNumber = 0; cellNumber < numCells; ++cellNumber) {
+      auto coords = getRelativeCellCoordinates(cellNumber);
+      int index = 0;
+      // Iterate over every neighbour cell with a higher cell number.
+      for (int x = coords[0] - 1; x < coords[0] + 2; ++x) {
+        for (int y = coords[1] - 1; y < coords[1] + 2; ++y) {
+          for (int z = coords[2] - 1; z < coords[2] + 2; ++z) {
+            if (cellNumber >= getCellNumberFromRelativeCellCoordinates(x, y, z)) {
+              continue;
+            }
             Coord3D cellOne(coords[0], coords[1], coords[2]);
             Coord3D cellTwo(x, y, z);
+
+            /*
+             * If one of the 3 coordinates of the second cell is smaller than the coordinate of the first cell,
+             * increment this coordinate for both cells.
+             */
             if (x < coords[0]) {
               cellOne += Coord3D(1, 0, 0);
               cellTwo += Coord3D(1, 0, 0);
@@ -175,15 +215,20 @@ LinkedCellsParticleContainer::LinkedCellsParticleContainer(const SimulationConfi
         }
       }
     }
+    Kokkos::deep_copy(c08Pairs, h_c08Pairs);
   }
-  Kokkos::deep_copy(c08Pairs, h_c08Pairs);
+
+  // After all cells are initialized, the particles are added
+  for (auto &particle : particles) {
+    addParticle(particle);
+  }
 
   const double time = timer.seconds();
   spdlog::info("Finished initializing " + std::to_string(particles.size()) + " particles. Time: "
                    + std::to_string(time) + " seconds.");
 }
 
-void LinkedCellsParticleContainer::addParticle(const Particle &particle) const {
+void Simulation::addParticle(const Particle &particle) const {
   const int cellNumber = getCorrectCellNumber(particle);
   if (cellNumber < 0 || numCells <= cellNumber) {
     std::cout << "That should not happen" << std::endl;
@@ -192,7 +237,7 @@ void LinkedCellsParticleContainer::addParticle(const Particle &particle) const {
   cells(cellNumber).addParticle(particle);
 }
 
-std::vector<Particle> LinkedCellsParticleContainer::getParticles() const {
+std::vector<Particle> Simulation::getParticles() const {
   std::vector<Particle> particles;
   for (int cellNumber = 0; cellNumber < numCells; ++cellNumber) {
     for (auto &particle : cells(cellNumber).getParticles()) {
@@ -202,18 +247,7 @@ std::vector<Particle> LinkedCellsParticleContainer::getParticles() const {
   return particles;
 }
 
-void LinkedCellsParticleContainer::doIteration() {
-  calculatePositions();
-  calculateForcesNewton3();
-  calculateVelocities();
-  moveParticles();
-  if (vtk && iteration % vtk.value().second == 0) {
-    writeVTKFile(vtk.value().first);
-  }
-  ++iteration;
-}
-
-void LinkedCellsParticleContainer::calculatePositions() const {
+void Simulation::calculatePositions() const {
   Kokkos::parallel_for(
       "calculatePositions",
       Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, numCells),
@@ -221,7 +255,7 @@ void LinkedCellsParticleContainer::calculatePositions() const {
         const Cell &cell = cells(cellNumber);
         for (int i = 0; i < cell.size; ++i) {
           cell.positionAt(i) +=
-              cell.velocityAt(i) * deltaT + cell.forceAt(i) * ((deltaT * deltaT) /
+              cell.velocityAt(i) * config.deltaT + cell.forceAt(i) * ((config.deltaT * config.deltaT) /
                   (2 * particleProperties.value_at(
                       particleProperties.find(
                           cell.typeIDAt(i))).mass));
@@ -229,8 +263,8 @@ void LinkedCellsParticleContainer::calculatePositions() const {
       });
 }
 
-void LinkedCellsParticleContainer::calculateForces() const {
-  //TODO get from particlePropertiesLibrary
+void Simulation::calculateForces() const {
+//TODO get from particlePropertiesLibrary
   const double epsilon = 1;
   const double sigma = 1;
   const double sigmaPow6 = sigma * sigma * sigma * sigma * sigma * sigma;
@@ -239,7 +273,7 @@ void LinkedCellsParticleContainer::calculateForces() const {
 
   const auto calculator = [=](const Coord3D &distance) {
     const double distanceValue = distance.absoluteValue();
-    if (distanceValue > cutoff) {
+    if (distanceValue > config.cutoff) {
       return Coord3D();
     }
     const double distanceValuePow6 =
@@ -262,7 +296,7 @@ void LinkedCellsParticleContainer::calculateForces() const {
         const Cell &cell = cells(index);
         for (int i = 0; i < cell.size; ++i) {
           cell.oldForceAt(i) = cell.forceAt(i);
-          cell.forceAt(i) = globalForce;
+          cell.forceAt(i) = config.globalForce;
         }
       }
   );
@@ -278,7 +312,7 @@ void LinkedCellsParticleContainer::calculateForces() const {
         for (int neighbour = 0; neighbour < 27; ++neighbour) {
           const int neighbourCellNumber = neighbours(cellNumber, neighbour);
           if (cells(neighbourCellNumber).isHaloCell) {
-            switch (condition) {
+            switch (boundaryCondition) {
               case none:break;
               case periodic: {
                 const int periodicTargetCellNumber = periodicTargetCellNumbers(neighbourCellNumber);
@@ -299,7 +333,7 @@ void LinkedCellsParticleContainer::calculateForces() const {
                 const Cell &neighbourCell = cells(neighbourCellNumber);
                 const Coord3D cellOffset = cell.bottomLeftCorner.distanceTo(neighbourCell.bottomLeftCorner);
                 // If more than one of the cells coordinates are different, the neighbour cell is an edge or a corner
-                if (std::abs(cellOffset.x) + std::abs(cellOffset.y) + std::abs(cellOffset.z) > cutoff) {
+                if (std::abs(cellOffset.x) + std::abs(cellOffset.y) + std::abs(cellOffset.z) > config.cutoff) {
                   continue;
                 }
                 for (int id = 0; id < cell.size; ++id) {
@@ -307,13 +341,13 @@ void LinkedCellsParticleContainer::calculateForces() const {
                   Coord3D ghostPosition = position + cellOffset;
                   if (cellOffset.x != 0) {
                     ghostPosition.x = neighbourCell.bottomLeftCorner.x
-                        + (cutoff - (ghostPosition.x - neighbourCell.bottomLeftCorner.x));
+                        + (config.cutoff - (ghostPosition.x - neighbourCell.bottomLeftCorner.x));
                   } else if (cellOffset.y != 0) {
                     ghostPosition.y = neighbourCell.bottomLeftCorner.y
-                        + (cutoff - (ghostPosition.y - neighbourCell.bottomLeftCorner.y));
+                        + (config.cutoff - (ghostPosition.y - neighbourCell.bottomLeftCorner.y));
                   } else if (cellOffset.z != 0) {
                     ghostPosition.z = neighbourCell.bottomLeftCorner.z
-                        + (cutoff - (ghostPosition.z - neighbourCell.bottomLeftCorner.z));
+                        + (config.cutoff - (ghostPosition.z - neighbourCell.bottomLeftCorner.z));
                   }
                   cell.forceAt(id) += calculator(position.distanceTo(ghostPosition));
                 }
@@ -336,7 +370,7 @@ void LinkedCellsParticleContainer::calculateForces() const {
   );
 }
 
-void LinkedCellsParticleContainer::calculateForcesNewton3() const {
+void Simulation::calculateForcesNewton3() const {
   //TODO get from particlePropertiesLibrary
   const double epsilon = 1;
   const double sigma = 1;
@@ -346,7 +380,7 @@ void LinkedCellsParticleContainer::calculateForcesNewton3() const {
 
   const auto calculator = [=](const Coord3D &distance) {
     const double distanceValue = distance.absoluteValue();
-    if (distanceValue > cutoff) {
+    if (distanceValue > config.cutoff) {
       return Coord3D();
     }
     const double distanceValuePow6 =
@@ -369,7 +403,7 @@ void LinkedCellsParticleContainer::calculateForcesNewton3() const {
         const Cell &cell = cells(index);
         for (int i = 0; i < cell.size; ++i) {
           cell.oldForceAt(i) = cell.forceAt(i);
-          cell.forceAt(i) = globalForce;
+          cell.forceAt(i) = config.globalForce;
         }
       }
   );
@@ -416,7 +450,7 @@ void LinkedCellsParticleContainer::calculateForcesNewton3() const {
               const int haloCellNumber = cellOne.isHaloCell ? cellOneNumber : cellTwoNumber;
               const Cell &normalCell = cells(normalCellNumber);
               const Cell &haloCell = cells(haloCellNumber);
-              switch (condition) {
+              switch (boundaryCondition) {
                 case none:break;
                 case periodic: {
                   const Cell &periodicTargetCell = cells(periodicTargetCellNumbers(haloCellNumber));
@@ -432,7 +466,7 @@ void LinkedCellsParticleContainer::calculateForcesNewton3() const {
                 }
                 case reflecting: {
                   const Coord3D offset = normalCell.bottomLeftCorner.distanceTo(haloCell.bottomLeftCorner);
-                  if (std::abs(offset.x) + std::abs(offset.y) + std::abs(offset.z) > cutoff) {
+                  if (std::abs(offset.x) + std::abs(offset.y) + std::abs(offset.z) > config.cutoff) {
                     continue;
                   }
                   for (int id = 0; id < normalCell.size; ++id) {
@@ -440,13 +474,13 @@ void LinkedCellsParticleContainer::calculateForcesNewton3() const {
                     Coord3D ghostPosition = position + offset;
                     if (offset.x != 0) {
                       ghostPosition.x = haloCell.bottomLeftCorner.x
-                          + (cutoff - (ghostPosition.x - haloCell.bottomLeftCorner.x));
+                          + (config.cutoff - (ghostPosition.x - haloCell.bottomLeftCorner.x));
                     } else if (offset.y != 0) {
                       ghostPosition.y = haloCell.bottomLeftCorner.y
-                          + (cutoff - (ghostPosition.y - haloCell.bottomLeftCorner.y));
+                          + (config.cutoff - (ghostPosition.y - haloCell.bottomLeftCorner.y));
                     } else if (offset.z != 0) {
                       ghostPosition.z = haloCell.bottomLeftCorner.z
-                          + (cutoff - (ghostPosition.z - haloCell.bottomLeftCorner.z));
+                          + (config.cutoff - (ghostPosition.z - haloCell.bottomLeftCorner.z));
                     }
                     normalCell.forceAt(id) += calculator(position.distanceTo(ghostPosition));
                   }
@@ -460,7 +494,7 @@ void LinkedCellsParticleContainer::calculateForcesNewton3() const {
   }
 }
 
-void LinkedCellsParticleContainer::calculateVelocities() const {
+void Simulation::calculateVelocities() const {
   Kokkos::parallel_for(
       "iterateCalculateVelocities",
       Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, numCells),
@@ -468,14 +502,13 @@ void LinkedCellsParticleContainer::calculateVelocities() const {
         const Cell &cell = cells(cellNumber);
         for (int i = 0; i < cell.size; ++i) {
           cell.velocityAt(i) += (cell.forceAt(i) + cell.oldForceAt(i)) *
-              (deltaT /
-                  (2 * particleProperties.value_at(
-                      particleProperties.find(cell.typeIDAt(i))).mass));
+              (config.deltaT / (2 * particleProperties.value_at(particleProperties.find(cell.typeIDAt(i))).mass));
         }
-      });
+      }
+  );
 }
 
-void LinkedCellsParticleContainer::moveParticles() const {
+void Simulation::moveParticles() const {
   for (int x = 1; x < numCellsX - 1; ++x) {
     for (int y = 1; y < numCellsY - 1; ++y) {
       for (int z = 1; z < numCellsZ - 1; ++z) {
@@ -495,7 +528,7 @@ void LinkedCellsParticleContainer::moveParticles() const {
           }
           Cell &correctCell = cells(correctCellNumber);
           if (correctCell.isHaloCell) {
-            switch (condition) {
+            switch (boundaryCondition) {
               case none:
               case reflecting:break;
               case periodic: {
@@ -504,9 +537,9 @@ void LinkedCellsParticleContainer::moveParticles() const {
                 const int correctY = correctCoords[1];
                 const int correctZ = correctCoords[2];
                 particle.position += Coord3D(
-                    (correctX == 0 ? 1 : correctX == numCellsX - 1 ? -1 : 0) * cutoff * (numCellsX - 2),
-                    (correctY == 0 ? 1 : correctY == numCellsY - 1 ? -1 : 0) * cutoff * (numCellsY - 2),
-                    (correctZ == 0 ? 1 : correctZ == numCellsZ - 1 ? -1 : 0) * cutoff * (numCellsZ - 2)
+                    (correctX == 0 ? 1 : correctX == numCellsX - 1 ? -1 : 0) * config.cutoff * (numCellsX - 2),
+                    (correctY == 0 ? 1 : correctY == numCellsY - 1 ? -1 : 0) * config.cutoff * (numCellsY - 2),
+                    (correctZ == 0 ? 1 : correctZ == numCellsZ - 1 ? -1 : 0) * config.cutoff * (numCellsZ - 2)
                 );
                 addParticle(particle);
               }
@@ -521,11 +554,11 @@ void LinkedCellsParticleContainer::moveParticles() const {
   }
 }
 
-int LinkedCellsParticleContainer::getCellNumberFromRelativeCellCoordinates(int x, int y, int z) const {
+int Simulation::getCellNumberFromRelativeCellCoordinates(const int x, const int y, const int z) const {
   return z * numCellsX * numCellsY + y * numCellsX + x;
 }
 
-std::array<int, 3> LinkedCellsParticleContainer::getRelativeCellCoordinates(int cellNumber) const {
+std::array<int, 3> Simulation::getRelativeCellCoordinates(int cellNumber) const {
   int z = cellNumber / (numCellsX * numCellsY);
   cellNumber -= z * (numCellsX * numCellsY);
   int y = cellNumber / numCellsX;
@@ -533,9 +566,9 @@ std::array<int, 3> LinkedCellsParticleContainer::getRelativeCellCoordinates(int 
   return {cellNumber, y, z};
 }
 
-std::vector<int> LinkedCellsParticleContainer::getNeighbourCellNumbers(int cellNumber) const {
+std::vector<int> Simulation::getNeighbourCellNumbers(const int cellNumber) const {
   std::vector<int> neighbourNumbers;
-  auto coords = getRelativeCellCoordinates(cellNumber);
+  const auto coords = getRelativeCellCoordinates(cellNumber);
   for (int z = coords[2] - 1; z <= coords[2] + 1; ++z) {
     for (int y = coords[1] - 1; y <= coords[1] + 1; ++y) {
       for (int x = coords[0] - 1; x <= coords[0] + 1; ++x) {
@@ -548,24 +581,24 @@ std::vector<int> LinkedCellsParticleContainer::getNeighbourCellNumbers(int cellN
   return neighbourNumbers;
 }
 
-int LinkedCellsParticleContainer::getCorrectCellNumber(const Particle &particle) const {
-  const Coord3D cellPosition = (particle.position - boxMin) / cutoff;
+int Simulation::getCorrectCellNumber(const Particle &particle) const {
+  const Coord3D cellPosition = (particle.position - boxMin) / config.cutoff;
   return getCellNumberFromRelativeCellCoordinates(static_cast<int>(cellPosition.x),
                                                   static_cast<int>(cellPosition.y),
                                                   static_cast<int>(cellPosition.z));
 }
 
-int LinkedCellsParticleContainer::getCellColor(int cellNumber) const {
-  auto coords = getRelativeCellCoordinates(cellNumber);
+int Simulation::getCellColor(const int cellNumber) const {
+  const auto coords = getRelativeCellCoordinates(cellNumber);
   return (coords[0] % 2 == 0 ? 0 : 1) + (coords[1] % 2 == 0 ? 0 : 2) + (coords[2] % 2 == 0 ? 0 : 4);
 }
 
-void LinkedCellsParticleContainer::writeVTKFile(const std::string &fileBaseName) const {
-  if (!vtk) {
+void Simulation::writeVTKFile(const std::string &fileBaseName) const {
+  if (!config.vtk) {
     return;
   }
   std::ostringstream strstr;
-  auto maxNumDigits = std::to_string(iterations).length();
+  auto maxNumDigits = std::to_string(config.iterations).length();
   std::vector<Particle> particles = getParticles();
   std::sort(particles.begin(), particles.end(), [](Particle &p1, Particle &p2) {
     return p1.particleID < p2.particleID;
