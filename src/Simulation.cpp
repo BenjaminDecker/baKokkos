@@ -177,7 +177,7 @@ Simulation::Simulation(const SimulationConfig &config) : config(config), iterati
 
   // For each c08 base cell, all cell pairs for force interactions are saved into the c08Pairs view.
   {
-    c08Pairs = Kokkos::View<std::pair<int, int> *[13]>("c08Pairs", numCells);
+    c08Pairs = Kokkos::View<int *[13][2]>("c08Pairs", numCells);
     auto h_c08Pairs = Kokkos::create_mirror_view(c08Pairs);
     for (int cellNumber = 0; cellNumber < numCells; ++cellNumber) {
       auto coords = getRelativeCellCoordinates(cellNumber);
@@ -210,7 +210,8 @@ Simulation::Simulation(const SimulationConfig &config) : config(config), iterati
             }
             int cellNumberOne = getCellNumberFromRelativeCellCoordinates(cellOne.x, cellOne.y, cellOne.z);
             int cellNumberTwo = getCellNumberFromRelativeCellCoordinates(cellTwo.x, cellTwo.y, cellTwo.z);
-            h_c08Pairs(cellNumber, index++) = {cellNumberOne, cellNumberTwo};
+            h_c08Pairs(cellNumber, index++, 0) = cellNumberOne;
+            h_c08Pairs(cellNumber, index++, 1) = cellNumberTwo;
           }
         }
       }
@@ -455,8 +456,8 @@ void Simulation::calculateForcesNewton3() const {
             }
           }
           for (int pairNumber = 0; pairNumber < 13; ++pairNumber) {
-            const int cellOneNumber = c08Pairs(baseCellNumber, pairNumber).first;
-            const int cellTwoNumber = c08Pairs(baseCellNumber, pairNumber).second;
+            const int cellOneNumber = c08Pairs(baseCellNumber, pairNumber, 0);
+            const int cellTwoNumber = c08Pairs(baseCellNumber, pairNumber, 1);
             const Cell &cellOne = cells(cellOneNumber);
             const Cell &cellTwo = cells(cellTwoNumber);
             if (!cellOne.isHaloCell && !cellTwo.isHaloCell) {

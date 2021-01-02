@@ -76,9 +76,8 @@ class Simulation {
   /// Contains 8 views of c08-base-cell cell numbers for each of the 8 different colors of the c08 cell coloring
   std::array<Kokkos::View<int *>, 8> c08baseCells;
 
-  //TODO change to 2-element int
   /// Contains all cell pairs of the c08 base step for each of the c08 base cell numbers
-  Kokkos::View<std::pair<int, int> *[13]> c08Pairs;
+  Kokkos::View<int *[13][2]> c08Pairs;
 
   /// Initializes the simulation by creating all views and adding all particles
   explicit Simulation(const SimulationConfig &config);
