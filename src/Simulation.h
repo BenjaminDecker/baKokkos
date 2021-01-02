@@ -91,7 +91,7 @@ class Simulation {
   /// Returns a std::vector of all particles inside the simulation
   [[nodiscard]] std::vector<Particle> getParticles() const;
 
- private:
+ //private:
   /// Calculate the positions of all particles after deltaT seconds based on their current positions and velocities
   void calculatePositions() const;
 

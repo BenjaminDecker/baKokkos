@@ -22,7 +22,6 @@ class Cell {
   Cell() : Cell(0, false, Coord3D()) {};
 
 #ifdef USE_AOS
-  KOKKOS_INLINE_FUNCTION
   Cell(int capacity, bool isHaloCell, Coord3D bottomLeftCorner)
       : size(0),
         isHaloCell(isHaloCell),
@@ -91,7 +90,6 @@ class Cell {
  private:
   Kokkos::View<Particle *> particles;
 #else
-  KOKKOS_INLINE_FUNCTION
   Cell(int capacity, bool isHaloCell, Coord3D bottomLeftCorner)
       : size(0),
         isHaloCell(isHaloCell),
