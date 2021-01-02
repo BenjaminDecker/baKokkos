@@ -228,11 +228,35 @@ Simulation::Simulation(const SimulationConfig &config) : config(config), iterati
                    + std::to_string(time) + " seconds.");
 }
 
+void Simulation::start() {
+  spdlog::info("Running Simulation...");
+  Kokkos::Timer timer;
+
+  //Iteration loop
+  for (; iteration < config.iterations; ++iteration) {
+    if (iteration % 1000 == 0) {
+      spdlog::info("Iteration: {:0" + std::to_string(std::to_string(config.iterations).length()) + "d}", iteration);
+    }
+    calculatePositions();
+    calculateForcesNewton3();
+    calculateVelocities();
+    moveParticles();
+    if (config.vtk && iteration % config.vtk.value().second == 0) {
+      writeVTKFile(config.vtk.value().first);
+    }
+  }
+
+  const double time = timer.seconds();
+  spdlog::info("Finished simulating. Time: " + std::to_string(time) + " seconds.");
+}
+
 void Simulation::addParticle(const Particle &particle) const {
   const int cellNumber = getCorrectCellNumber(particle);
   if (cellNumber < 0 || numCells <= cellNumber) {
-    std::cout << "That should not happen" << std::endl;
-    return;
+    std::cout
+        << "Particles outside of the simulation space cuboid cannot be added to any cell of the simulation."
+        << std::endl;
+    exit(1);
   }
   cells(cellNumber).addParticle(particle);
 }
@@ -260,7 +284,8 @@ void Simulation::calculatePositions() const {
                       particleProperties.find(
                           cell.typeIDAt(i))).mass));
         }
-      });
+      }
+  );
 }
 
 void Simulation::calculateForces() const {
@@ -523,8 +548,11 @@ void Simulation::moveParticles() const {
           }
           cell.removeParticle(particleIndex);
           if (correctCellNumber < 0 || numCells <= correctCellNumber) {
-            std::cout << "That should not happen2" << std::endl;
-            continue;
+            std::cout
+                << "A particle escaped the simulation. Most likely, this happened because the particle was moving fast "
+                << "enough to pass the halo cell layer in one time step."
+                << std::endl;
+            exit(1);
           }
           Cell &correctCell = cells(correctCellNumber);
           if (correctCell.isHaloCell) {

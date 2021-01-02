@@ -84,44 +84,74 @@ class Simulation {
   explicit Simulation(const SimulationConfig &config);
 
   /// Starts the simulation loop
-  void start() {
-    spdlog::info("Running Simulation...");
-    Kokkos::Timer timer;
+  void start();
 
-    //Iteration loop
-    for (; iteration < config.iterations; ++iteration) {
-      if (iteration % 1000 == 0) {
-        spdlog::info("Iteration: {:0" + std::to_string(std::to_string(config.iterations).length()) + "d}", iteration);
-      }
-      calculatePositions();
-      calculateForcesNewton3();
-      calculateVelocities();
-      moveParticles();
-      if (config.vtk && iteration % config.vtk.value().second == 0) {
-        writeVTKFile(config.vtk.value().first);
-      }
-    }
-
-    const double time = timer.seconds();
-    spdlog::info("Finished simulating. Time: " + std::to_string(time) + " seconds.");
-  }
-
-  /// This method finds the correct cell and inserts the given particle into it
+  /// Inserts the given particle into the correct cell
   void addParticle(const Particle &particle) const;
 
-  /// This method adds all particles from all cells into one std::vector and returns it
+  /// Returns a std::vector of all particles inside the simulation
   [[nodiscard]] std::vector<Particle> getParticles() const;
 
  private:
+  /// Calculate the positions of all particles after deltaT seconds based on their current positions and velocities
   void calculatePositions() const;
+
+  /**
+   * Calculates the force acting on every particle based on the lj 6-12 potential and the particles positions. For each
+   * particle in a cell, the force acting on that particle from every other particle in the same cell and in all
+   * neighbouring cells is calculated and added together, plus the global force acting on every particle.
+   */
   void calculateForces() const;
+
+  /**
+   * Calculates the pairwise forces on particle pairs and adds the calculated force to both particles. This is more
+   * efficient than only calculating the received force for every particle. The implementation uses c08-base-cells
+   */
   void calculateForcesNewton3() const;
+
+  /**
+   * Calculates the velocities of all particles after deltaT seconds based on their current velocities and acting forces
+   */
   void calculateVelocities() const;
+
+  /**
+   * Checks for every particle if the particle is still saved in the correct cell, given by its coordinates, and moves
+   * the particle into the correct cell if necessary
+   */
   void moveParticles() const;
-  [[nodiscard]] KOKKOS_FUNCTION int getCellNumberFromRelativeCellCoordinates(int x, int y, int z) const;
+
+  /**
+   * Returns the cellNumber of the cell at the specified position in a cell grid with dimensions given by the numCells
+   * member variables and with the first cell at position (0,0,0)
+   */
+  [[nodiscard]] int getCellNumberFromRelativeCellCoordinates(int x, int y, int z) const;
+
+  /**
+   * Returns the position of the cell with the specified cellNumber in a cell grid with dimensions given by the numCells
+   * member variables and with the first cell at position (0,0,0)
+   */
   [[nodiscard]] std::array<int, 3> getRelativeCellCoordinates(int cellNumber) const;
+
+  /**
+   * Returns a vector of all cellNumbers in a 3x3x3 cube around the cell with the specified cell number. Only existing
+   * cellNumbers are returned, so the returned vector contains less elements for halo cells.
+   */
   [[nodiscard]] std::vector<int> getNeighbourCellNumbers(int cellNumber) const;
+
+  /**
+   * Returns the correct cell number of a particle, given by its position
+   */
   [[nodiscard]] int getCorrectCellNumber(const Particle &particle) const;
+
+  /**
+   * Returns a number from 0 to 7, representing the color of the cell with the given cell number for the c08 base cell
+   * color scheme
+   */
   [[nodiscard]] int getCellColor(int cellNumber) const;
+
+  /**
+   * Writes a new vtk file containing information about the position, velocity, experienced force, typeID and particleID
+   * of all particles in the simulation
+   */
   void writeVTKFile(const std::string &fileBaseName) const;
 };
