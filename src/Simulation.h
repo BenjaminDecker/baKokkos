@@ -56,8 +56,7 @@ class Simulation {
   const SimulationConfig config; /**< Configuration for the simulation */
   CellsViewType cells; /**< Contains the linked cells that make up the simulation space */
   Kokkos::View<int *[27]> neighbours; /**< Contains the cell numbers of all neighbours for each cell */
-  Kokkos::UnorderedMap<int, ParticleProperties>
-      particleProperties; /**< Map from particle type to particle properties */
+  Kokkos::UnorderedMap<int, ParticleProperties> particleProperties; /**< Map of particle properties */
   Coord3D boxMin; /**< Lower-Left-Front corner of the simulation space */
   Coord3D boxMax; /**< Upper-Right-Back corner of the simulation space */
   int numCellsX; /**< Number of cells in the x-direction */
@@ -67,9 +66,9 @@ class Simulation {
   int iteration; /**< The current iteration */
 
   /**
-   * Contains the cell number of the periodic target cell on the opposite side of the simulation space for each halo
-   * cell. The size of the view is equal to the total amount of cells to enable easy access via cell number indices. The
-   * periodic target cell numbers for non-halo cells are equal to the cell number index.
+   * Contains the cell number of each periodic target cell on the opposite side of the simulation space for each halo
+   * cell. The size of the view is equal to the total amount of cells to enable easy access via cell number indices.
+   * This means that there are redundant entries for the non-halo cells.
    */
   Kokkos::View<int *> periodicTargetCellNumbers;
 
@@ -80,7 +79,7 @@ class Simulation {
   Kokkos::View<int *[13][2]> c08Pairs;
 
   /// Initializes the simulation by creating all views and adding all particles
-  explicit Simulation(const SimulationConfig &config);
+  explicit Simulation(SimulationConfig config);
 
   /// Starts the simulation loop
   void start();
@@ -153,4 +152,6 @@ class Simulation {
    * of all particles in the simulation
    */
   void writeVTKFile(const std::string &fileBaseName) const;
+
+  void initializeSimulation();
 };
