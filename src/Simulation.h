@@ -154,4 +154,8 @@ class Simulation {
   void writeVTKFile(const std::string &fileBaseName) const;
 
   void initializeSimulation();
+
+ //private:
+  KOKKOS_INLINE_FUNCTION
+  Coord3D calculator(const Coord3D &distance) const;
 };

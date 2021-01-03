@@ -72,6 +72,7 @@ void Simulation::calculatePositions() const {
 }
 
 void Simulation::calculateForces() const {
+  /*
 //TODO get from particlePropertiesLibrary
   const double epsilon = 1;
   const double sigma = 1;
@@ -176,32 +177,16 @@ void Simulation::calculateForces() const {
         }
       }
   );
+   */
 }
 
 void Simulation::calculateForcesNewton3() const {
   //TODO get from particlePropertiesLibrary
-  const double epsilon = 1;
-  const double sigma = 1;
-  const double sigmaPow6 = sigma * sigma * sigma * sigma * sigma * sigma;
-  const double twentyFourEpsilonSigmaPow6 = 24 * epsilon * sigmaPow6;
-  const double fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
-
-  const auto calculator = [=](const Coord3D &distance) {
-    const double distanceValue = distance.absoluteValue();
-    if (distanceValue > config.cutoff) {
-      return Coord3D();
-    }
-    const double distanceValuePow6 =
-        distanceValue * distanceValue * distanceValue * distanceValue * distanceValue *
-            distanceValue;
-    const double distanceValuePow13 = distanceValuePow6 * distanceValuePow6 * distanceValue;
-
-    // https://www.ableitungsrechner.net/#expr=4%2A%CE%B5%28%28%CF%83%2Fr%29%5E12-%28%CF%83%2Fr%29%5E6%29&diffvar=r
-    const double forceValue =
-        (twentyFourEpsilonSigmaPow6 * distanceValuePow6 - fourtyEightEpsilonSigmaPow12) /
-            distanceValuePow13;
-    return (distance * (forceValue / distanceValue));
-  };
+  constexpr double epsilon = 1;
+  constexpr double sigma = 1;
+  constexpr double sigmaPow6 = sigma * sigma * sigma * sigma * sigma * sigma;
+  constexpr double twentyFourEpsilonSigmaPow6 = 24 * epsilon * sigmaPow6;
+  constexpr double fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
 
   // Save oldForces and initialize new forces
   Kokkos::parallel_for(
@@ -692,4 +677,26 @@ void Simulation::initializeSimulation() {
   const double time = timer.seconds();
   spdlog::info("Finished initializing " + std::to_string(particles.size()) + " particles. Time: "
                    + std::to_string(time) + " seconds.");
+}
+
+Coord3D Simulation::calculator(const Coord3D &distance) const {
+  constexpr double epsilon = 1;
+  constexpr double sigma = 1;
+  constexpr double sigmaPow6 = sigma * sigma * sigma * sigma * sigma * sigma;
+  constexpr double twentyFourEpsilonSigmaPow6 = 24 * epsilon * sigmaPow6;
+  constexpr double fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
+  const double distanceValue = distance.absoluteValue();
+  if (distanceValue > config.cutoff) {
+    return Coord3D();
+  }
+  const double distanceValuePow6 =
+      distanceValue * distanceValue * distanceValue * distanceValue * distanceValue *
+          distanceValue;
+  const double distanceValuePow13 = distanceValuePow6 * distanceValuePow6 * distanceValue;
+
+  // https://www.ableitungsrechner.net/#expr=4%2A%CE%B5%28%28%CF%83%2Fr%29%5E12-%28%CF%83%2Fr%29%5E6%29&diffvar=r
+  const double forceValue =
+      (twentyFourEpsilonSigmaPow6 * distanceValuePow6 - fourtyEightEpsilonSigmaPow12) /
+          distanceValuePow13;
+  return (distance * (forceValue / distanceValue));
 }
