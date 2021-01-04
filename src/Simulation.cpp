@@ -562,6 +562,7 @@ void Simulation::initializeSimulation() {
    */
   {
     cells = CellsViewType(Kokkos::view_alloc(std::string("Cells"), Kokkos::WithoutInitializing), numCells);
+    Kokkos::fence();
     periodicTargetCellNumbers = Kokkos::View<int *>("periodicTargetCellNumbers", numCells);
     auto h_periodicTargetCellNumbers = Kokkos::create_mirror_view(periodicTargetCellNumbers);
 
