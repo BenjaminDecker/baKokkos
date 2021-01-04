@@ -63,9 +63,9 @@ void Simulation::calculatePositions() const {
         for (int i = 0; i < cell.size; ++i) {
           cell.positionAt(i) +=
               cell.velocityAt(i) * config.deltaT + cell.forceAt(i) * ((config.deltaT * config.deltaT) /
-                  (2 * particleProperties.value_at(
+                  2/*(2 * particleProperties.value_at(
                       particleProperties.find(
-                          cell.typeIDAt(i))).mass));
+                          cell.typeIDAt(i))).mass)*/);
         }
       }
   );
@@ -298,7 +298,7 @@ void Simulation::calculateVelocities() const {
         const Cell &cell = cells(cellNumber);
         for (int i = 0; i < cell.size; ++i) {
           cell.velocityAt(i) += (cell.forceAt(i) + cell.oldForceAt(i)) *
-              (config.deltaT / (2 * particleProperties.value_at(particleProperties.find(cell.typeIDAt(i))).mass));
+              (config.deltaT / 2/*(2 * particleProperties.value_at(particleProperties.find(cell.typeIDAt(i))).mass)*/);
         }
       }
   );
@@ -474,15 +474,15 @@ void Simulation::initializeSimulation() {
    * simulation. In reality, this number is a lot smaller because many particleGroups will have the same particleType.
    */
   {
-    particleProperties = Kokkos::UnorderedMap<int, ParticleProperties>(config.particleGroups.size());
+//    particleProperties = Kokkos::UnorderedMap<int, ParticleProperties>(config.particleGroups.size());
     for (const auto &particleGroup : config.particleGroups) {
       const int typeID = particleGroup->typeID;
       const ParticleProperties pp(particleGroup->particleMass);
-      Kokkos::parallel_for("add particle properties", 1, KOKKOS_LAMBDA(int i) {
-        if (!particleProperties.exists(typeID)) {
-          particleProperties.insert(typeID, pp);
-        }
-      });
+//      Kokkos::parallel_for("add particle properties", 1, KOKKOS_LAMBDA(int i) {
+//        if (!particleProperties.exists(typeID)) {
+//          particleProperties.insert(typeID, pp);
+//        }
+//      });
       Kokkos::fence();
       const auto newParticles = particleGroup->getParticles(particles.size());
       for (const auto &particle : newParticles) {
