@@ -59,10 +59,10 @@ void Simulation::calculatePositions() const {
       "calculatePositions",
       Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, numCells),
       KOKKOS_LAMBDA(int cellNumber) {
-        const Cell &cell = cells(cellNumber);
-        for (int i = 0; i < cell.size; ++i) {
-          cell.positionAt(i) +=
-              cell.velocityAt(i) * config.deltaT + cell.forceAt(i) * ((config.deltaT * config.deltaT) /
+        //const Cell &cell = cells(cellNumber);
+        for (int i = 0; i < cells(cellNumber).size; ++i) {
+          cells(cellNumber).positionAt(i) +=
+              cells(cellNumber).velocityAt(i) * config.deltaT + cells(cellNumber).forceAt(i) * ((config.deltaT * config.deltaT) /
                   2/*(2 * particleProperties.value_at(
                       particleProperties.find(
                           cell.typeIDAt(i))).mass)*/);
