@@ -69,6 +69,7 @@ void Simulation::calculatePositions() const {
         }
       }
   );
+  Kokkos::fence();
 }
 
 void Simulation::calculateForces() const {
@@ -200,6 +201,7 @@ void Simulation::calculateForcesNewton3() const {
         }
       }
   );
+  Kokkos::fence();
 
   for (int color = 0; color < 8; ++color) {
     const auto colorCells = c08baseCells[color];
@@ -284,6 +286,7 @@ void Simulation::calculateForcesNewton3() const {
           }
         }
     );
+    Kokkos::fence();
   }
 }
 
@@ -299,6 +302,7 @@ void Simulation::calculateVelocities() const {
         }
       }
   );
+  Kokkos::fence();
 }
 
 void Simulation::moveParticles() const {
@@ -479,6 +483,7 @@ void Simulation::initializeSimulation() {
           particleProperties.insert(typeID, pp);
         }
       });
+      Kokkos::fence();
       const auto newParticles = particleGroup->getParticles(particles.size());
       for (const auto &particle : newParticles) {
         particles.push_back(particle);
