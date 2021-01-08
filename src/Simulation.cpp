@@ -564,7 +564,8 @@ void Simulation::initializeSimulation() {
     cells = CellsViewType(Kokkos::view_alloc(std::string("Cells"), Kokkos::WithoutInitializing), numCells);
     Kokkos::fence();
     periodicTargetCellNumbers = Kokkos::View<int *>("periodicTargetCellNumbers", numCells);
-    auto h_periodicTargetCellNumbers = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(), periodicTargetCellNumbers);
+    auto h_periodicTargetCellNumbers = Kokkos::create_mirror_view(periodicTargetCellNumbers);
+    Kokkos::deep_copy(h_periodicTargetCellNumbers, periodicTargetCellNumbers);
 
     // All necessary cells are created and saved in the cells view.
     for (int x = 0; x < numCellsX; ++x) {
@@ -594,7 +595,8 @@ void Simulation::initializeSimulation() {
   // For each cell, the neighbours view is filled with the cell numbers of its neighbours.
   {
     neighbours = Kokkos::View<int *[27]>("neighbours", cells.size());
-    const auto h_neighbours = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(), neighbours);
+    const auto h_neighbours = Kokkos::create_mirror_view(neighbours);
+    Kokkos::deep_copy(h_neighbours, neighbours);
     for (int i = 0; i < numCells; ++i) {
       std::vector<int> neighbourNumbers = getNeighbourCellNumbers(i);
       for (int k = 0; k < neighbourNumbers.size(); ++k) {
@@ -622,7 +624,8 @@ void Simulation::initializeSimulation() {
     for (int i = 0; i < c08baseCellsVec.size(); ++i) {
       const int size = c08baseCellsVec[i].size();
       c08baseCells[i] = Kokkos::View<int *>("c08baseCells " + std::to_string(i), size);
-      const auto h_c08BaseCells = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(), c08baseCells[i]);
+      const auto h_c08BaseCells = Kokkos::create_mirror_view(c08baseCells[i]);
+      Kokkos::deep_copy(h_c08BaseCells, c08baseCells[i]);
       for (int k = 0; k < size; ++k) {
         h_c08BaseCells(k) = c08baseCellsVec[i][k];
       }
@@ -634,7 +637,8 @@ void Simulation::initializeSimulation() {
   // For each c08 base cell, all cell pairs for force interactions are saved into the c08Pairs view.
   {
     c08Pairs = Kokkos::View<int *[13][2]>("c08Pairs", numCells);
-    auto h_c08Pairs = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(), c08Pairs);
+    auto h_c08Pairs = Kokkos::create_mirror_view(c08Pairs);
+    Kokkos::deep_copy(h_c08Pairs, c08Pairs);
     for (int cellNumber = 0; cellNumber < numCells; ++cellNumber) {
       auto coords = getRelativeCellCoordinates(cellNumber);
       int index = 0;
@@ -666,7 +670,7 @@ void Simulation::initializeSimulation() {
             }
             int cellNumberOne = getCellNumberFromRelativeCellCoordinates(cellOne.x, cellOne.y, cellOne.z);
             int cellNumberTwo = getCellNumberFromRelativeCellCoordinates(cellTwo.x, cellTwo.y, cellTwo.z);
-            h_c08Pairs(cellNumber, index++, 0) = cellNumberOne;
+            h_c08Pairs(cellNumber, index, 0) = cellNumberOne;
             h_c08Pairs(cellNumber, index++, 1) = cellNumberTwo;
           }
         }
