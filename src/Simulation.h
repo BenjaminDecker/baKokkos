@@ -53,7 +53,7 @@ class Simulation {
   const SimulationConfig config; /**< Configuration for the simulation */
   CellsViewType cells; /**< Contains the linked cells that make up the simulation space */
   Kokkos::View<int *[27]> neighbours; /**< Contains the cell numbers of all neighbours for each cell */
-  //Kokkos::UnorderedMap<int, ParticleProperties> particleProperties; /**< Map of particle properties */
+  Kokkos::UnorderedMap<int, ParticleProperties> particleProperties; /**< Map of particle properties */
   Coord3D boxMin; /**< Lower-Left-Front corner of the simulation space */
   Coord3D boxMax; /**< Upper-Right-Back corner of the simulation space */
   int numCellsX; /**< Number of cells in the x-direction */

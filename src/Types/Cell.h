@@ -118,33 +118,6 @@ class Cell {
       Kokkos::resize(particleIDs, capacity);
       Kokkos::resize(typeIDs, capacity);
     }
-//    auto s_positions = Kokkos::subview(positions, size);
-//    auto s_velocities = Kokkos::subview(velocities, size);
-//    auto s_forces = Kokkos::subview(forces, size);
-//    auto s_oldForces = Kokkos::subview(oldForces, size);
-//    auto s_particleIDs = Kokkos::subview(particleIDs, size);
-//    auto s_typeIDs = Kokkos::subview(typeIDs, size);
-//
-//    auto h_positions = Kokkos::create_mirror_view(s_positions);
-//    auto h_velocities = Kokkos::create_mirror_view(s_velocities);
-//    auto h_forces = Kokkos::create_mirror_view(s_forces);
-//    auto h_oldForces = Kokkos::create_mirror_view(s_oldForces);
-//    auto h_particleIDs = Kokkos::create_mirror_view(s_typeIDs);
-//    auto h_typeIDs = Kokkos::create_mirror_view(s_typeIDs);
-//
-//    h_positions() = particle.position;
-//    h_velocities() = particle.velocity;
-//    h_forces() = particle.force;
-//    h_oldForces() = particle.oldForce;
-//    h_particleIDs() = particle.particleID;
-//    h_typeIDs() = particle.typeID;
-//
-//    Kokkos::deep_copy(s_positions, h_positions);
-//    Kokkos::deep_copy(s_velocities, h_velocities);
-//    Kokkos::deep_copy(s_forces, h_forces);
-//    Kokkos::deep_copy(s_oldForces, h_oldForces);
-//    Kokkos::deep_copy(s_particleIDs, h_particleIDs);
-//    Kokkos::deep_copy(s_typeIDs, h_typeIDs);
 
     Kokkos::deep_copy(Kokkos::subview(positions, size), particle.position);
     Kokkos::deep_copy(Kokkos::subview(velocities, size), particle.velocity);
