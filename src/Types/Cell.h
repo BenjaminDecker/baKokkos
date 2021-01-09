@@ -90,6 +90,7 @@ class Cell {
  private:
   Kokkos::View<Particle *> particles;
 #else
+
   Cell(int capacity, bool isHaloCell, Coord3D bottomLeftCorner)
       : size(0),
         isHaloCell(isHaloCell),
@@ -117,27 +118,52 @@ class Cell {
       Kokkos::resize(particleIDs, capacity);
       Kokkos::resize(typeIDs, capacity);
     }
-    Kokkos::parallel_for("addParticle", 1, KOKKOS_LAMBDA(int i) {
-      positions(size) = particle.position;
-      velocities(size) = particle.velocity;
-      forces(size) = particle.force;
-      oldForces(size) = particle.oldForce;
-      particleIDs(size) = particle.particleID;
-      typeIDs(size) = particle.typeID;
-    });
+//    auto s_positions = Kokkos::subview(positions, size);
+//    auto s_velocities = Kokkos::subview(velocities, size);
+//    auto s_forces = Kokkos::subview(forces, size);
+//    auto s_oldForces = Kokkos::subview(oldForces, size);
+//    auto s_particleIDs = Kokkos::subview(particleIDs, size);
+//    auto s_typeIDs = Kokkos::subview(typeIDs, size);
+//
+//    auto h_positions = Kokkos::create_mirror_view(s_positions);
+//    auto h_velocities = Kokkos::create_mirror_view(s_velocities);
+//    auto h_forces = Kokkos::create_mirror_view(s_forces);
+//    auto h_oldForces = Kokkos::create_mirror_view(s_oldForces);
+//    auto h_particleIDs = Kokkos::create_mirror_view(s_typeIDs);
+//    auto h_typeIDs = Kokkos::create_mirror_view(s_typeIDs);
+//
+//    h_positions() = particle.position;
+//    h_velocities() = particle.velocity;
+//    h_forces() = particle.force;
+//    h_oldForces() = particle.oldForce;
+//    h_particleIDs() = particle.particleID;
+//    h_typeIDs() = particle.typeID;
+//
+//    Kokkos::deep_copy(s_positions, h_positions);
+//    Kokkos::deep_copy(s_velocities, h_velocities);
+//    Kokkos::deep_copy(s_forces, h_forces);
+//    Kokkos::deep_copy(s_oldForces, h_oldForces);
+//    Kokkos::deep_copy(s_particleIDs, h_particleIDs);
+//    Kokkos::deep_copy(s_typeIDs, h_typeIDs);
+
+    Kokkos::deep_copy(Kokkos::subview(positions, size), particle.position);
+    Kokkos::deep_copy(Kokkos::subview(velocities, size), particle.velocity);
+    Kokkos::deep_copy(Kokkos::subview(forces, size), particle.force);
+    Kokkos::deep_copy(Kokkos::subview(oldForces, size), particle.oldForce);
+    Kokkos::deep_copy(Kokkos::subview(particleIDs, size), particle.particleID);
+    Kokkos::deep_copy(Kokkos::subview(typeIDs, size), particle.typeID);
+
     ++size;
   }
 
   void removeParticle(int index) {
     --size;
-    Kokkos::parallel_for("removeParticle", 1, KOKKOS_LAMBDA(int i) {
-      positions(index) = positions(size);
-      velocities(index) = velocities(size);
-      forces(index) = forces(size);
-      oldForces(index) = oldForces(size);
-      particleIDs(index) = particleIDs(size);
-      typeIDs(index) = typeIDs(size);
-    });
+    Kokkos::deep_copy(Kokkos::subview(positions, index), Kokkos::subview(positions, size));
+    Kokkos::deep_copy(Kokkos::subview(velocities, index), Kokkos::subview(velocities, size));
+    Kokkos::deep_copy(Kokkos::subview(forces, index), Kokkos::subview(forces, size));
+    Kokkos::deep_copy(Kokkos::subview(oldForces, index), Kokkos::subview(oldForces, size));
+    Kokkos::deep_copy(Kokkos::subview(particleIDs, index), Kokkos::subview(particleIDs, size));
+    Kokkos::deep_copy(Kokkos::subview(typeIDs, index), Kokkos::subview(typeIDs, size));
   }
 
   [[nodiscard]] std::vector<Particle> getParticles() const {
@@ -147,6 +173,14 @@ class Cell {
     auto h_oldForces = Kokkos::create_mirror_view(oldForces);
     auto h_particleIDs = Kokkos::create_mirror_view(particleIDs);
     auto h_typeIDs = Kokkos::create_mirror_view(typeIDs);
+
+    Kokkos::deep_copy(h_positions, positions);
+    Kokkos::deep_copy(h_velocities, velocities);
+    Kokkos::deep_copy(h_forces, forces);
+    Kokkos::deep_copy(h_oldForces, oldForces);
+    Kokkos::deep_copy(h_particleIDs, particleIDs);
+    Kokkos::deep_copy(h_typeIDs, typeIDs);
+
     std::vector<Particle> particles;
     particles.reserve(size);
     for (int i = 0; i < size; ++i) {

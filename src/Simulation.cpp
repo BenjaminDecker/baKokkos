@@ -7,6 +7,41 @@
 #include <fstream>
 #include <utility>
 
+constexpr enum BoundaryCondition {
+  none, periodic, reflecting
+} boundaryCondition(none);
+
+KOKKOS_INLINE_FUNCTION
+void getRelativeCellCoordinatesDevice(int cellNumber, int cellsX, int cellsY, int &x, int &y, int &z) {
+  z = cellNumber / (cellsX * cellsY);
+  cellNumber -= z * (cellsX * cellsY);
+  y = cellNumber / cellsX;
+  x = cellNumber - y * cellsX;
+}
+
+[[nodiscard]] KOKKOS_INLINE_FUNCTION
+Coord3D calculator(const Coord3D &distance, double cutoff) {
+  constexpr double epsilon = 1;
+  constexpr double sigma = 1;
+  constexpr double sigmaPow6 = sigma * sigma * sigma * sigma * sigma * sigma;
+  constexpr double twentyFourEpsilonSigmaPow6 = 24 * epsilon * sigmaPow6;
+  constexpr double fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
+  const double distanceValue = distance.absoluteValue();
+  if (distanceValue > cutoff) {
+    return Coord3D();
+  }
+  const double distanceValuePow6 =
+      distanceValue * distanceValue * distanceValue * distanceValue * distanceValue *
+          distanceValue;
+  const double distanceValuePow13 = distanceValuePow6 * distanceValuePow6 * distanceValue;
+
+  // https://www.ableitungsrechner.net/#expr=4%2A%CE%B5%28%28%CF%83%2Fr%29%5E12-%28%CF%83%2Fr%29%5E6%29&diffvar=r
+  const double forceValue =
+      (twentyFourEpsilonSigmaPow6 * distanceValuePow6 - fourtyEightEpsilonSigmaPow12) /
+          distanceValuePow13;
+  return (distance * (forceValue / distanceValue));
+}
+
 Simulation::Simulation(SimulationConfig config) : config(std::move(config)), iteration(0) {
   initializeSimulation();
 }
@@ -55,14 +90,19 @@ std::vector<Particle> Simulation::getParticles() const {
 }
 
 void Simulation::calculatePositions() const {
+    //auto particles = getParticles();
+
+  const auto cellsCopy = cells;
+  const auto deltaTCopy = config.deltaT;
+
   Kokkos::parallel_for(
       "calculatePositions",
       Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, numCells),
       KOKKOS_LAMBDA(int cellNumber) {
-        //const Cell &cell = cells(cellNumber);
-        for (int i = 0; i < cells(cellNumber).size; ++i) {
-          cells(cellNumber).positionAt(i) +=
-              cells(cellNumber).velocityAt(i) * config.deltaT + cells(cellNumber).forceAt(i) * ((config.deltaT * config.deltaT) /
+        const Cell &cell = cellsCopy(cellNumber);
+        for (int i = 0; i < cell.size; ++i) {
+          cell.positionAt(i) +=
+              cellsCopy(cellNumber).velocityAt(i) * deltaTCopy + cellsCopy(cellNumber).forceAt(i) * ((deltaTCopy * deltaTCopy) /
                   2/*(2 * particleProperties.value_at(
                       particleProperties.find(
                           cell.typeIDAt(i))).mass)*/);
@@ -189,19 +229,29 @@ void Simulation::calculateForcesNewton3() const {
   constexpr double twentyFourEpsilonSigmaPow6 = 24 * epsilon * sigmaPow6;
   constexpr double fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
 
+  const auto cellsCopy = cells;
+  const auto globalForceCopy = config.globalForce;
+
   // Save oldForces and initialize new forces
   Kokkos::parallel_for(
       "saveOldForce",
       Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, numCells),
       KOKKOS_LAMBDA(int index) {
-        const Cell &cell = cells(index);
+        const Cell &cell = cellsCopy(index);
         for (int i = 0; i < cell.size; ++i) {
           cell.oldForceAt(i) = cell.forceAt(i);
-          cell.forceAt(i) = config.globalForce;
+          cell.forceAt(i) = globalForceCopy;
         }
       }
   );
   Kokkos::fence();
+
+  const auto numCellsXCopy = numCellsX;
+  const auto numCellsYCopy = numCellsY;
+  const auto numCellsZCopy = numCellsZ;
+  const auto cutoffCopy = config.cutoff;
+  const auto c08PairsCopy = c08Pairs;
+  const auto periodicTargetCellNumbersCopy = periodicTargetCellNumbers;
 
   for (int color = 0; color < 8; ++color) {
     const auto colorCells = c08baseCells[color];
@@ -210,29 +260,30 @@ void Simulation::calculateForcesNewton3() const {
         Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, colorCells.size()),
         KOKKOS_LAMBDA(const int index) {
           const int baseCellNumber = colorCells(index);
-          const auto relativeCoords = getRelativeCellCoordinates(baseCellNumber);
-          if (relativeCoords[0] == numCellsX - 1 ||
-              relativeCoords[1] == numCellsY - 1 ||
-              relativeCoords[2] == numCellsZ - 1) {
+          int relativeX, relativeY, relativeZ;
+          getRelativeCellCoordinatesDevice(baseCellNumber, numCellsXCopy, numCellsYCopy, relativeX, relativeY, relativeZ);
+          if (relativeX == numCellsXCopy - 1 ||
+              relativeY == numCellsYCopy - 1 ||
+              relativeZ == numCellsZCopy - 1) {
             return;
           }
-          const Cell &baseCell = cells(baseCellNumber);
+          const Cell &baseCell = cellsCopy(baseCellNumber);
           for (int id_1 = 0; id_1 < baseCell.size; ++id_1) {
             for (int id_2 = id_1 + 1; id_2 < baseCell.size; ++id_2) {
-              const Coord3D actingForce = calculator(baseCell.positionAt(id_1).distanceTo(baseCell.positionAt(id_2)));
+              const Coord3D actingForce = calculator(baseCell.positionAt(id_1).distanceTo(baseCell.positionAt(id_2)), cutoffCopy);
               baseCell.forceAt(id_1) += actingForce;
               baseCell.forceAt(id_2) += actingForce * (-1);
             }
           }
           for (int pairNumber = 0; pairNumber < 13; ++pairNumber) {
-            const int cellOneNumber = c08Pairs(baseCellNumber, pairNumber, 0);
-            const int cellTwoNumber = c08Pairs(baseCellNumber, pairNumber, 1);
-            const Cell &cellOne = cells(cellOneNumber);
-            const Cell &cellTwo = cells(cellTwoNumber);
+            const int cellOneNumber = c08PairsCopy(baseCellNumber, pairNumber, 0);
+            const int cellTwoNumber = c08PairsCopy(baseCellNumber, pairNumber, 1);
+            const Cell &cellOne = cellsCopy(cellOneNumber);
+            const Cell &cellTwo = cellsCopy(cellTwoNumber);
             if (!cellOne.isHaloCell && !cellTwo.isHaloCell) {
               for (int id_1 = 0; id_1 < cellOne.size; ++id_1) {
                 for (int id_2 = 0; id_2 < cellTwo.size; ++id_2) {
-                  const Coord3D actingForce = calculator(cellOne.positionAt(id_1).distanceTo(cellTwo.positionAt(id_2)));
+                  const Coord3D actingForce = calculator(cellOne.positionAt(id_1).distanceTo(cellTwo.positionAt(id_2)), cutoffCopy);
                   cellOne.forceAt(id_1) += actingForce;
                   cellTwo.forceAt(id_2) += actingForce * (-1);
                 }
@@ -243,17 +294,17 @@ void Simulation::calculateForcesNewton3() const {
               }
               const int normalCellNumber = cellOne.isHaloCell ? cellTwoNumber : cellOneNumber;
               const int haloCellNumber = cellOne.isHaloCell ? cellOneNumber : cellTwoNumber;
-              const Cell &normalCell = cells(normalCellNumber);
-              const Cell &haloCell = cells(haloCellNumber);
+              const Cell &normalCell = cellsCopy(normalCellNumber);
+              const Cell &haloCell = cellsCopy(haloCellNumber);
               switch (boundaryCondition) {
                 case none:break;
                 case periodic: {
-                  const Cell &periodicTargetCell = cells(periodicTargetCellNumbers(haloCellNumber));
+                  const Cell &periodicTargetCell = cellsCopy(periodicTargetCellNumbersCopy(haloCellNumber));
                   const Coord3D offset = periodicTargetCell.bottomLeftCorner.distanceTo(haloCell.bottomLeftCorner);
                   for (int id_1 = 0; id_1 < normalCell.size; ++id_1) {
                     for (int id_2 = 0; id_2 < periodicTargetCell.size; ++id_2) {
                       normalCell.forceAt(id_1) += calculator(normalCell.positionAt(id_1).distanceTo(
-                          periodicTargetCell.positionAt(id_2) + offset)
+                          periodicTargetCell.positionAt(id_2) + offset), cutoffCopy
                       );
                     }
                   }
@@ -261,7 +312,7 @@ void Simulation::calculateForcesNewton3() const {
                 }
                 case reflecting: {
                   const Coord3D offset = normalCell.bottomLeftCorner.distanceTo(haloCell.bottomLeftCorner);
-                  if (std::abs(offset.x) + std::abs(offset.y) + std::abs(offset.z) > config.cutoff) {
+                  if (std::abs(offset.x) + std::abs(offset.y) + std::abs(offset.z) > cutoffCopy) {
                     continue;
                   }
                   for (int id = 0; id < normalCell.size; ++id) {
@@ -269,15 +320,15 @@ void Simulation::calculateForcesNewton3() const {
                     Coord3D ghostPosition = position + offset;
                     if (offset.x != 0) {
                       ghostPosition.x = haloCell.bottomLeftCorner.x
-                          + (config.cutoff - (ghostPosition.x - haloCell.bottomLeftCorner.x));
+                          + (cutoffCopy - (ghostPosition.x - haloCell.bottomLeftCorner.x));
                     } else if (offset.y != 0) {
                       ghostPosition.y = haloCell.bottomLeftCorner.y
-                          + (config.cutoff - (ghostPosition.y - haloCell.bottomLeftCorner.y));
+                          + (cutoffCopy - (ghostPosition.y - haloCell.bottomLeftCorner.y));
                     } else if (offset.z != 0) {
                       ghostPosition.z = haloCell.bottomLeftCorner.z
-                          + (config.cutoff - (ghostPosition.z - haloCell.bottomLeftCorner.z));
+                          + (cutoffCopy - (ghostPosition.z - haloCell.bottomLeftCorner.z));
                     }
-                    normalCell.forceAt(id) += calculator(position.distanceTo(ghostPosition));
+                    normalCell.forceAt(id) += calculator(position.distanceTo(ghostPosition), cutoffCopy);
                   }
                   break;
                 }
@@ -291,14 +342,18 @@ void Simulation::calculateForcesNewton3() const {
 }
 
 void Simulation::calculateVelocities() const {
+
+  const auto cellsCopy = cells;
+  const auto deltaTCopy = config.deltaT;
+
   Kokkos::parallel_for(
       "iterateCalculateVelocities",
       Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, numCells),
       KOKKOS_LAMBDA(int cellNumber) {
-        const Cell &cell = cells(cellNumber);
+        const Cell &cell = cellsCopy(cellNumber);
         for (int i = 0; i < cell.size; ++i) {
           cell.velocityAt(i) += (cell.forceAt(i) + cell.oldForceAt(i)) *
-              (config.deltaT / 2/*(2 * particleProperties.value_at(particleProperties.find(cell.typeIDAt(i))).mass)*/);
+              (deltaTCopy / 2/*(2 * particleProperties.value_at(particleProperties.find(cell.typeIDAt(i))).mass)*/);
         }
       }
   );
@@ -306,6 +361,10 @@ void Simulation::calculateVelocities() const {
 }
 
 void Simulation::moveParticles() const {
+
+  const auto numCellsXCopy = numCellsX;
+  const auto numCellsYCopy = numCellsY;
+
   for (int x = 1; x < numCellsX - 1; ++x) {
     for (int y = 1; y < numCellsY - 1; ++y) {
       for (int z = 1; z < numCellsZ - 1; ++z) {
@@ -332,10 +391,11 @@ void Simulation::moveParticles() const {
               case none:
               case reflecting:break;
               case periodic: {
-                const auto correctCoords = getRelativeCellCoordinates(correctCellNumber);
-                const int correctX = correctCoords[0];
-                const int correctY = correctCoords[1];
-                const int correctZ = correctCoords[2];
+                int relativeX, relativeY, relativeZ;
+                getRelativeCellCoordinatesDevice(correctCellNumber, numCellsXCopy, numCellsYCopy, relativeX, relativeY, relativeZ);
+                const int correctX = relativeX;
+                const int correctY = relativeY;
+                const int correctZ = relativeZ;
                 particle.position += Coord3D(
                     (correctX == 0 ? 1 : correctX == numCellsX - 1 ? -1 : 0) * config.cutoff * (numCellsX - 2),
                     (correctY == 0 ? 1 : correctY == numCellsY - 1 ? -1 : 0) * config.cutoff * (numCellsY - 2),
@@ -678,35 +738,13 @@ void Simulation::initializeSimulation() {
     }
     Kokkos::deep_copy(c08Pairs, h_c08Pairs);
   }
-
+  Kokkos::fence();
   // After all cells are initialized, the particles are added
   for (auto &particle : particles) {
     addParticle(particle);
   }
-
+  Kokkos::fence();
   const double time = timer.seconds();
   spdlog::info("Finished initializing " + std::to_string(particles.size()) + " particles. Time: "
                    + std::to_string(time) + " seconds.");
-}
-
-Coord3D Simulation::calculator(const Coord3D &distance) const {
-  constexpr double epsilon = 1;
-  constexpr double sigma = 1;
-  constexpr double sigmaPow6 = sigma * sigma * sigma * sigma * sigma * sigma;
-  constexpr double twentyFourEpsilonSigmaPow6 = 24 * epsilon * sigmaPow6;
-  constexpr double fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
-  const double distanceValue = distance.absoluteValue();
-  if (distanceValue > config.cutoff) {
-    return Coord3D();
-  }
-  const double distanceValuePow6 =
-      distanceValue * distanceValue * distanceValue * distanceValue * distanceValue *
-          distanceValue;
-  const double distanceValuePow13 = distanceValuePow6 * distanceValuePow6 * distanceValue;
-
-  // https://www.ableitungsrechner.net/#expr=4%2A%CE%B5%28%28%CF%83%2Fr%29%5E12-%28%CF%83%2Fr%29%5E6%29&diffvar=r
-  const double forceValue =
-      (twentyFourEpsilonSigmaPow6 * distanceValuePow6 - fourtyEightEpsilonSigmaPow12) /
-          distanceValuePow13;
-  return (distance * (forceValue / distanceValue));
 }

@@ -36,9 +36,6 @@
  */
 typedef Kokkos::View<Cell *, SharedSpace> CellsViewType;
 
-constexpr enum BoundaryCondition {
-  none, periodic, reflecting
-} boundaryCondition(reflecting);
 
 /**
  * @brief This class controls the simulation. The simulation space is partitioned into cells, which contain the particles.
@@ -156,6 +153,26 @@ class Simulation {
   void initializeSimulation();
 
  //private:
-  KOKKOS_INLINE_FUNCTION
-  Coord3D calculator(const Coord3D &distance) const;
+//  [[nodiscard]] KOKKOS_INLINE_FUNCTION
+//  Coord3D calculator(const Coord3D &distance) const {
+//    constexpr double epsilon = 1;
+//    constexpr double sigma = 1;
+//    constexpr double sigmaPow6 = sigma * sigma * sigma * sigma * sigma * sigma;
+//    constexpr double twentyFourEpsilonSigmaPow6 = 24 * epsilon * sigmaPow6;
+//    constexpr double fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
+//    const double distanceValue = distance.absoluteValue();
+//    if (distanceValue > config.cutoff) {
+//      return Coord3D();
+//    }
+//    const double distanceValuePow6 =
+//        distanceValue * distanceValue * distanceValue * distanceValue * distanceValue *
+//            distanceValue;
+//    const double distanceValuePow13 = distanceValuePow6 * distanceValuePow6 * distanceValue;
+//
+//    // https://www.ableitungsrechner.net/#expr=4%2A%CE%B5%28%28%CF%83%2Fr%29%5E12-%28%CF%83%2Fr%29%5E6%29&diffvar=r
+//    const double forceValue =
+//        (twentyFourEpsilonSigmaPow6 * distanceValuePow6 - fourtyEightEpsilonSigmaPow12) /
+//            distanceValuePow13;
+//    return (distance * (forceValue / distanceValue));
+//  }
 };
