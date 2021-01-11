@@ -10,6 +10,7 @@
 #include <spdlog//spdlog.h>
 #include <Kokkos_Core.hpp>
 #include <Kokkos_UnorderedMap.hpp>
+#include <Kokkos_DualView.hpp>
 #include <vector>
 
 #ifdef KOKKOS_ENABLE_CUDA
@@ -36,6 +37,10 @@
  */
 typedef Kokkos::View<Cell *, SharedSpace> CellsViewType;
 
+typedef Kokkos::View<Coord3D *> InnerCoordViewType;
+typedef Kokkos::View<int *> InnerIntViewType;
+typedef Kokkos::View<InnerCoordViewType *, SharedSpace> CoordViewType;
+typedef Kokkos::View<InnerIntViewType *, SharedSpace> IntViewType;
 
 /**
  * @brief This class controls the simulation. The simulation space is partitioned into cells, which contain the particles.
@@ -51,7 +56,20 @@ typedef Kokkos::View<Cell *, SharedSpace> CellsViewType;
 class Simulation {
  public:
   const SimulationConfig config; /**< Configuration for the simulation */
-  CellsViewType cells; /**< Contains the linked cells that make up the simulation space */
+  //CellsViewType cells; /**< Contains the linked cells that make up the simulation space */
+
+  CoordViewType positions;
+  CoordViewType forces;
+  CoordViewType oldForces;
+  CoordViewType velocities;
+  IntViewType typeIDs;
+  IntViewType particleIDs;
+  Kokkos::View<bool*> isHalo;
+  decltype(Kokkos::create_mirror_view(isHalo)) h_isHalo;
+  Kokkos::View<Coord3D *> bottomLeftCorners;
+  Kokkos::DualView<int *> cellSizes;
+  std::vector<int> cellCapacities;
+
   Kokkos::View<int *[27]> neighbours; /**< Contains the cell numbers of all neighbours for each cell */
   Kokkos::UnorderedMap<int, ParticleProperties> particleProperties; /**< Map of particle properties */
   Coord3D boxMin; /**< Lower-Left-Front corner of the simulation space */
@@ -82,12 +100,15 @@ class Simulation {
   void start();
 
   /// Inserts the given particle into the correct cell
-  void addParticle(const Particle &particle) const;
+  void addParticle(const Particle &particle);
+
+  [[nodiscard]] std::vector<Particle> getParticles(int cellNumber) const;
 
   /// Returns a std::vector of all particles inside the simulation
   [[nodiscard]] std::vector<Particle> getParticles() const;
 
- //private:
+  void removeParticle(int cellNumber, int index);
+
   /// Calculate the positions of all particles after deltaT seconds based on their current positions and velocities
   void calculatePositions() const;
 
@@ -113,7 +134,7 @@ class Simulation {
    * Checks for every particle if the particle is still saved in the correct cell, given by its coordinates, and moves
    * the particle into the correct cell if necessary
    */
-  void moveParticles() const;
+  void moveParticles();
 
   /**
    * Returns the cellNumber of the cell at the specified position in a cell grid with dimensions given by the numCells
@@ -151,28 +172,4 @@ class Simulation {
   void writeVTKFile(const std::string &fileBaseName) const;
 
   void initializeSimulation();
-
- //private:
-//  [[nodiscard]] KOKKOS_INLINE_FUNCTION
-//  Coord3D calculator(const Coord3D &distance) const {
-//    constexpr double epsilon = 1;
-//    constexpr double sigma = 1;
-//    constexpr double sigmaPow6 = sigma * sigma * sigma * sigma * sigma * sigma;
-//    constexpr double twentyFourEpsilonSigmaPow6 = 24 * epsilon * sigmaPow6;
-//    constexpr double fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
-//    const double distanceValue = distance.absoluteValue();
-//    if (distanceValue > config.cutoff) {
-//      return Coord3D();
-//    }
-//    const double distanceValuePow6 =
-//        distanceValue * distanceValue * distanceValue * distanceValue * distanceValue *
-//            distanceValue;
-//    const double distanceValuePow13 = distanceValuePow6 * distanceValuePow6 * distanceValue;
-//
-//    // https://www.ableitungsrechner.net/#expr=4%2A%CE%B5%28%28%CF%83%2Fr%29%5E12-%28%CF%83%2Fr%29%5E6%29&diffvar=r
-//    const double forceValue =
-//        (twentyFourEpsilonSigmaPow6 * distanceValuePow6 - fourtyEightEpsilonSigmaPow12) /
-//            distanceValuePow13;
-//    return (distance * (forceValue / distanceValue));
-//  }
 };

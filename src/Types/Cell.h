@@ -118,7 +118,6 @@ class Cell {
       Kokkos::resize(particleIDs, capacity);
       Kokkos::resize(typeIDs, capacity);
     }
-
     Kokkos::deep_copy(Kokkos::subview(positions, size), particle.position);
     Kokkos::deep_copy(Kokkos::subview(velocities, size), particle.velocity);
     Kokkos::deep_copy(Kokkos::subview(forces, size), particle.force);
