@@ -68,6 +68,7 @@ class Simulation {
   decltype(Kokkos::create_mirror_view(isHalo)) h_isHalo;
   Kokkos::View<Coord3D *> bottomLeftCorners;
   Kokkos::DualView<int *> cellSizes;
+  Kokkos::DualView<bool *> hasMoved;
   std::vector<int> cellCapacities;
 
   Kokkos::View<int *[27]> neighbours; /**< Contains the cell numbers of all neighbours for each cell */

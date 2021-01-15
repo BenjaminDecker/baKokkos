@@ -19,6 +19,21 @@ void getRelativeCellCoordinatesDevice(int cellNumber, int cellsX, int cellsY, in
   x = cellNumber - y * cellsX;
 }
 
+KOKKOS_INLINE_FUNCTION
+int getCellNumberFromRelativeCellCoordinatesDevice(int x, int y, int z, int numCellsX, int numCellsY) {
+  return z * numCellsX * numCellsY + y * numCellsX + x;
+}
+
+KOKKOS_INLINE_FUNCTION
+int getCorrectCellNumberDevice(const Coord3D &position, const Coord3D &boxMin, double cutoff, int numCellsX, int numCellsY) {
+  const Coord3D cellPosition = (position - boxMin) / cutoff;
+  return getCellNumberFromRelativeCellCoordinatesDevice(static_cast<int>(cellPosition.x),
+                                                  static_cast<int>(cellPosition.y),
+                                                  static_cast<int>(cellPosition.z),
+                                                  numCellsX,
+                                                  numCellsY);
+}
+
 [[nodiscard]] KOKKOS_INLINE_FUNCTION
 Coord3D calculator(const Coord3D &distance, double cutoff) {
   constexpr double epsilon = 1;
@@ -53,13 +68,18 @@ void Simulation::start() {
 
   //Iteration loop
   for (; iteration < config.iterations; ++iteration) {
-    if (iteration % 1000 == 0) {
+    if (iteration % 1 == 0) {
       spdlog::info("Iteration: {:0" + std::to_string(std::to_string(config.iterations).length()) + "d}", iteration);
     }
+    spdlog::info("positions");
     calculatePositions();
+    spdlog::info("forces");
     calculateForcesNewton3();
+    spdlog::info("velocities");
     calculateVelocities();
+    spdlog::info("move");
     moveParticles();
+    spdlog::info("sync");
     cellSizes.sync_device();
     if (config.vtk && iteration % config.vtk.value().second == 0) {
       writeVTKFile(config.vtk.value().first);
@@ -158,6 +178,11 @@ void Simulation::calculatePositions() const {
   const auto deltaTCopy = config.deltaT;
   const auto typeIDsCopy = typeIDs;
   const auto particlePropertiesCopy = particleProperties;
+  const auto boxMinCopy = boxMin;
+  const auto cutoffCopy = config.cutoff;
+  const auto numCellsXCopy = numCellsX;
+  const auto numCellsYCopy = numCellsY;
+  const auto hasMovedCopy = hasMoved;
 
   Kokkos::parallel_for(
       "calculatePositions",
@@ -170,6 +195,16 @@ void Simulation::calculatePositions() const {
                       (2 * particlePropertiesCopy.value_at(
                           particlePropertiesCopy.find(
                               typeIDsCopy(cellNumber)(i))).mass));
+          const int correctCellNumber = getCorrectCellNumberDevice(
+              positionsCopy(cellNumber)(i),
+              boxMinCopy,
+              cutoffCopy,
+              numCellsXCopy,
+              numCellsYCopy
+          );
+          if (cellNumber != correctCellNumber) {
+            hasMovedCopy.view_device()(cellNumber) = true;
+          }
         }
       }
   );
@@ -450,11 +485,19 @@ void Simulation::moveParticles() {
 
   const auto numCellsXCopy = numCellsX;
   const auto numCellsYCopy = numCellsY;
+  hasMoved.modify_device();
+  hasMoved.sync_host();
+
 
   for (int x = 1; x < numCellsX - 1; ++x) {
     for (int y = 1; y < numCellsY - 1; ++y) {
       for (int z = 1; z < numCellsZ - 1; ++z) {
         const int cellNumber = getCellNumberFromRelativeCellCoordinates(x, y, z);
+        if(!hasMoved.view_host()(cellNumber)) {
+          continue;
+        }
+        hasMoved.view_host()(cellNumber) = true;
+        hasMoved.modify_host();
         const auto particles = getParticles(cellNumber);
         for (int particleIndex = particles.size() - 1; particleIndex >= 0; --particleIndex) {
           Particle particle = particles[particleIndex];
@@ -501,6 +544,7 @@ void Simulation::moveParticles() {
       }
     }
   }
+  hasMoved.sync_device();
 }
 
 int Simulation::getCellNumberFromRelativeCellCoordinates(const int x, const int y, const int z) const {
@@ -712,13 +756,17 @@ void Simulation::initializeSimulation() {
    */
   {
     cellSizes = Kokkos::DualView<int *>("cellSizes", numCells);
+    hasMoved = Kokkos::DualView<bool *>("hasMoved", numCells);
     const auto cellSizesCopy = cellSizes;
+    const auto hasMovedCopy = hasMoved;
     cellCapacities.resize(numCells);
     Kokkos::parallel_for("initSizesAndCapacities", numCells, KOKKOS_LAMBDA(int i) {
       cellSizesCopy.view_device()(i) = 0;
+      hasMovedCopy.view_device()(i) = false;
     });
     for (int i = 0; i < numCells; ++i) {
       cellSizes.view_host()(i) = 0;
+      hasMoved.view_host()(i) = false;
       cellCapacities[i] = 1;
     }
     Kokkos::fence();
