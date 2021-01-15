@@ -31,7 +31,7 @@
 #endif
 
 /**
- * A view of "cells" that each contain another view of type Cell which contains the particles the particles of that cell
+ * A view of "cells" that each contain another view of type Cell which contains the particles of that cell
  *
  * @see Cell
  */
