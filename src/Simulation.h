@@ -129,7 +129,7 @@ class Simulation {
   /**
    * Calculates the velocities of all particles after deltaT seconds based on their current velocities and acting forces
    */
-  void calculateVelocities() const;
+  void calculateVelocitiesAndPositions() const;
 
   /**
    * Checks for every particle if the particle is still saved in the correct cell, given by its coordinates, and moves

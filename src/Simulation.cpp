@@ -9,7 +9,7 @@
 
 constexpr enum BoundaryCondition {
   none, periodic, reflecting
-} boundaryCondition(none);
+} boundaryCondition(reflecting);
 
 KOKKOS_INLINE_FUNCTION
 void getRelativeCellCoordinatesDevice(int cellNumber, int cellsX, int cellsY, int &x, int &y, int &z) {
@@ -67,23 +67,22 @@ void Simulation::start() {
   Kokkos::Timer timer;
 
   //Iteration loop
-  for (; iteration < config.iterations; ++iteration) {
-    if (iteration % 1 == 0) {
+  for (; iteration < 50; ++iteration) {
+    if (iteration % 1000 == 0) {
       spdlog::info("Iteration: {:0" + std::to_string(std::to_string(config.iterations).length()) + "d}", iteration);
     }
-    spdlog::info("positions");
-    calculatePositions();
+//    spdlog::info("positions");
+//    calculatePositions();
     spdlog::info("forces");
     calculateForcesNewton3();
-    spdlog::info("velocities");
-    calculateVelocities();
+    spdlog::info("velocitiesAndPositions");
+    calculateVelocitiesAndPositions();
     spdlog::info("move");
     moveParticles();
-    spdlog::info("sync");
-    cellSizes.sync_device();
-    if (config.vtk && iteration % config.vtk.value().second == 0) {
-      writeVTKFile(config.vtk.value().first);
-    }
+    spdlog::info("write");
+//    if (config.vtk && iteration % config.vtk.value().second == 0) {
+//      writeVTKFile(config.vtk.value().first);
+//    }
   }
 
   const double time = timer.seconds();
@@ -331,8 +330,6 @@ void Simulation::calculateForcesNewton3() const {
   const auto cellSizesCopy = cellSizes;
   const auto positionsCopy = positions;
   const auto forcesCopy = forces;
-  const auto oldForcesCopy = oldForces;
-  const auto globalForceCopy = config.globalForce;
   const auto numCellsXCopy = numCellsX;
   const auto numCellsYCopy = numCellsY;
   const auto numCellsZCopy = numCellsZ;
@@ -343,16 +340,10 @@ void Simulation::calculateForcesNewton3() const {
   const auto bottomLeftCornersCopy = bottomLeftCorners;
 
   // Save oldForces and initialize new forces
-  Kokkos::parallel_for(
-      "saveOldForce",
-      Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, numCells),
-      KOKKOS_LAMBDA(int cellNumber) {
-        for (int i = 0; i < cellSizesCopy.view_device()(cellNumber); ++i) {
-          oldForcesCopy(cellNumber)(i) = forcesCopy(cellNumber)(i);
-          forcesCopy(cellNumber)(i) = globalForceCopy;
-        }
-      }
-  );
+  for (int i = 0; i < numCells; ++i) {
+    Kokkos::deep_copy(Kokkos::DefaultExecutionSpace(), oldForces(i), forces(i));
+    Kokkos::deep_copy(Kokkos::DefaultExecutionSpace(), forces(i), config.globalForce);
+  }
   Kokkos::fence();
 
   for (int color = 0; color < 8; ++color) {
@@ -456,25 +447,46 @@ void Simulation::calculateForcesNewton3() const {
   }
 }
 
-void Simulation::calculateVelocities() const {
+void Simulation::calculateVelocitiesAndPositions() const {
 
   const auto cellSizesCopy = cellSizes;
-  const auto velocitesCopy = velocities;
   const auto forcesCopy = forces;
   const auto oldForcesCopy = oldForces;
   const auto typeIDsCopy = typeIDs;
   const auto deltaTCopy = config.deltaT;
   const auto particlePropertiesCopy = particleProperties;
+  const auto positionsCopy = positions;
+  const auto velocitiesCopy = velocities;
+  const auto boxMinCopy = boxMin;
+  const auto cutoffCopy = config.cutoff;
+  const auto numCellsXCopy = numCellsX;
+  const auto numCellsYCopy = numCellsY;
+  const auto hasMovedCopy = hasMoved;
 
   Kokkos::parallel_for(
       "iterateCalculateVelocities",
       Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, numCells),
       KOKKOS_LAMBDA(int cellNumber) {
         for (int i = 0; i < cellSizesCopy.view_device()(cellNumber); ++i) {
-          velocitesCopy(cellNumber)(i) += (forcesCopy(cellNumber)(i) + oldForcesCopy(cellNumber)(i)) *
-              (deltaTCopy / (2 * particlePropertiesCopy.value_at(
-                  particlePropertiesCopy.find(typeIDsCopy(cellNumber)(i))
-              ).mass));
+          auto &velocity = velocitiesCopy(cellNumber)(i);
+          auto &position = positionsCopy(cellNumber)(i);
+          const auto force = forcesCopy(cellNumber)(i);
+          const auto oldForce = oldForcesCopy(cellNumber)(i);
+          const auto mass = particlePropertiesCopy.value_at(particlePropertiesCopy.find(typeIDsCopy(cellNumber)(i))).mass;
+
+          velocity += (force + oldForce) * (deltaTCopy / (2 * mass));
+          position += velocity * deltaTCopy + force * ((deltaTCopy * deltaTCopy) / (2 * mass));
+
+          const int correctCellNumber = getCorrectCellNumberDevice(
+              position,
+              boxMinCopy,
+              cutoffCopy,
+              numCellsXCopy,
+              numCellsYCopy
+              );
+          if (cellNumber != correctCellNumber) {
+            hasMovedCopy.view_device()(cellNumber) = true;
+          }
         }
       }
   );
@@ -545,6 +557,7 @@ void Simulation::moveParticles() {
     }
   }
   hasMoved.sync_device();
+  cellSizes.sync_device();
 }
 
 int Simulation::getCellNumberFromRelativeCellCoordinates(const int x, const int y, const int z) const {
