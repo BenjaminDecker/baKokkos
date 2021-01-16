@@ -316,7 +316,7 @@ void Simulation::calculateForcesNewton3() const {
   for (int color = 0; color < 8; ++color) {
     const auto colorCells = c08baseCells[color];
     Kokkos::parallel_for(
-        "calculateForcesForColor: " + std::to_string(color) + "  Iteration: \" + std::to_string(iteration)",
+        "calculateForcesForColor: " + std::to_string(color) + "  Iteration: " + std::to_string(iteration),
         Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, colorCells.size()),
         KOKKOS_LAMBDA(const int index) {
           const int baseCellNumber = colorCells(index);
