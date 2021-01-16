@@ -110,9 +110,6 @@ class Simulation {
 
   void removeParticle(int cellNumber, int index);
 
-  /// Calculate the positions of all particles after deltaT seconds based on their current positions and velocities
-  void calculatePositions() const;
-
   /**
    * Calculates the force acting on every particle based on the lj 6-12 potential and the particles positions. For each
    * particle in a cell, the force acting on that particle from every other particle in the same cell and in all
@@ -127,7 +124,8 @@ class Simulation {
   void calculateForcesNewton3() const;
 
   /**
-   * Calculates the velocities of all particles after deltaT seconds based on their current velocities and acting forces
+   * Calculates the velocities and positions of all particles after deltaT seconds based on their current velocities,
+   * positions and acting forces
    */
   void calculateVelocitiesAndPositions() const;
 

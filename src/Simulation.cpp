@@ -67,12 +67,10 @@ void Simulation::start() {
   Kokkos::Timer timer;
 
   //Iteration loop
-  for (; iteration < 50; ++iteration) {
+  for (; iteration < config.iterations; ++iteration) {
     if (iteration % 1000 == 0) {
       spdlog::info("Iteration: {:0" + std::to_string(std::to_string(config.iterations).length()) + "d}", iteration);
     }
-//    spdlog::info("positions");
-//    calculatePositions();
     spdlog::info("forces");
     calculateForcesNewton3();
     spdlog::info("velocitiesAndPositions");
@@ -80,9 +78,9 @@ void Simulation::start() {
     spdlog::info("move");
     moveParticles();
     spdlog::info("write");
-//    if (config.vtk && iteration % config.vtk.value().second == 0) {
-//      writeVTKFile(config.vtk.value().first);
-//    }
+    if (config.vtk && iteration % config.vtk.value().second == 0) {
+      writeVTKFile(config.vtk.value().first);
+    }
   }
 
   const double time = timer.seconds();
@@ -167,47 +165,6 @@ void Simulation::removeParticle(int cellNumber, int index) {
   Kokkos::deep_copy(Kokkos::subview(oldForces(cellNumber), index), Kokkos::subview(oldForces(cellNumber), size));
   Kokkos::deep_copy(Kokkos::subview(particleIDs(cellNumber), index), Kokkos::subview(particleIDs(cellNumber), size));
   Kokkos::deep_copy(Kokkos::subview(typeIDs(cellNumber), index), Kokkos::subview(typeIDs(cellNumber), size));
-}
-
-void Simulation::calculatePositions() const {
-  const auto cellSizesCopy = cellSizes;
-  const auto positionsCopy = positions;
-  const auto velocitiesCopy = velocities;
-  const auto forcesCopy = forces;
-  const auto deltaTCopy = config.deltaT;
-  const auto typeIDsCopy = typeIDs;
-  const auto particlePropertiesCopy = particleProperties;
-  const auto boxMinCopy = boxMin;
-  const auto cutoffCopy = config.cutoff;
-  const auto numCellsXCopy = numCellsX;
-  const auto numCellsYCopy = numCellsY;
-  const auto hasMovedCopy = hasMoved;
-
-  Kokkos::parallel_for(
-      "calculatePositions",
-      Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, numCells),
-      KOKKOS_LAMBDA(int cellNumber) {
-        for (int i = 0; i < cellSizesCopy.view_device()(cellNumber); ++i) {
-          positionsCopy(cellNumber)(i) +=
-              velocitiesCopy(cellNumber)(i) * deltaTCopy
-                  + forcesCopy(cellNumber)(i) * ((deltaTCopy * deltaTCopy) /
-                      (2 * particlePropertiesCopy.value_at(
-                          particlePropertiesCopy.find(
-                              typeIDsCopy(cellNumber)(i))).mass));
-          const int correctCellNumber = getCorrectCellNumberDevice(
-              positionsCopy(cellNumber)(i),
-              boxMinCopy,
-              cutoffCopy,
-              numCellsXCopy,
-              numCellsYCopy
-          );
-          if (cellNumber != correctCellNumber) {
-            hasMovedCopy.view_device()(cellNumber) = true;
-          }
-        }
-      }
-  );
-  Kokkos::fence();
 }
 
 void Simulation::calculateForces() const {
@@ -338,12 +295,25 @@ void Simulation::calculateForcesNewton3() const {
   const auto periodicTargetCellNumbersCopy = periodicTargetCellNumbers;
   const auto isHaloCopy = isHalo;
   const auto bottomLeftCornersCopy = bottomLeftCorners;
+  const auto oldForcesCopy = oldForces;
+  const auto globalForceCopy = config.globalForce;
 
   // Save oldForces and initialize new forces
-  for (int i = 0; i < numCells; ++i) {
-    Kokkos::deep_copy(Kokkos::DefaultExecutionSpace(), oldForces(i), forces(i));
-    Kokkos::deep_copy(Kokkos::DefaultExecutionSpace(), forces(i), config.globalForce);
-  }
+  Kokkos::parallel_for(
+      "saveAndCopyForces",
+      Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, numCells),
+      KOKKOS_LAMBDA (int cellNumber) {
+        for (int i = 0; i < cellSizesCopy.view_device()(cellNumber); ++i) {
+          oldForcesCopy(cellNumber)(i) = forcesCopy(cellNumber)(i);
+          forcesCopy(cellNumber)(i) = globalForceCopy;
+        }
+      }
+      );
+
+//  for (int i = 0; i < numCells; ++i) {
+//    Kokkos::deep_copy(Kokkos::DefaultExecutionSpace(), oldForces(i), forces(i));
+//    Kokkos::deep_copy(Kokkos::DefaultExecutionSpace(), forces(i), config.globalForce);
+//  }
   Kokkos::fence();
 
   for (int color = 0; color < 8; ++color) {
