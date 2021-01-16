@@ -71,6 +71,7 @@ void Simulation::start() {
     if (iteration % 1000 == 0) {
       spdlog::info("Iteration: {:0" + std::to_string(std::to_string(config.iterations).length()) + "d}", iteration);
     }
+    Kokkos::Profiling::pushRegion("Iteration: " + std::to_string(iteration));
     spdlog::info("forces");
     calculateForcesNewton3();
     spdlog::info("velocitiesAndPositions");
@@ -81,6 +82,7 @@ void Simulation::start() {
     if (config.vtk && iteration % config.vtk.value().second == 0) {
       writeVTKFile(config.vtk.value().first);
     }
+    Kokkos::Profiling::popRegion();
   }
 
   const double time = timer.seconds();
@@ -300,7 +302,7 @@ void Simulation::calculateForcesNewton3() const {
 
   // Save oldForces and initialize new forces
   Kokkos::parallel_for(
-      "saveAndCopyForces",
+      "saveAndCopyForces  Iteration: " + std::to_string(iteration),
       Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, numCells),
       KOKKOS_LAMBDA (int cellNumber) {
         for (int i = 0; i < cellSizesCopy.view_device()(cellNumber); ++i) {
@@ -309,17 +311,12 @@ void Simulation::calculateForcesNewton3() const {
         }
       }
       );
-
-//  for (int i = 0; i < numCells; ++i) {
-//    Kokkos::deep_copy(Kokkos::DefaultExecutionSpace(), oldForces(i), forces(i));
-//    Kokkos::deep_copy(Kokkos::DefaultExecutionSpace(), forces(i), config.globalForce);
-//  }
   Kokkos::fence();
 
   for (int color = 0; color < 8; ++color) {
     const auto colorCells = c08baseCells[color];
     Kokkos::parallel_for(
-        "calculateForcesForColor" + std::to_string(color),
+        "calculateForcesForColor: " + std::to_string(color) + "  Iteration: \" + std::to_string(iteration)",
         Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, colorCells.size()),
         KOKKOS_LAMBDA(const int index) {
           const int baseCellNumber = colorCells(index);
@@ -434,7 +431,7 @@ void Simulation::calculateVelocitiesAndPositions() const {
   const auto hasMovedCopy = hasMoved;
 
   Kokkos::parallel_for(
-      "iterateCalculateVelocities",
+      "calculateVelocitiesAndPosition  Iteration: " + std::to_string(iteration),
       Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, numCells),
       KOKKOS_LAMBDA(int cellNumber) {
         for (int i = 0; i < cellSizesCopy.view_device()(cellNumber); ++i) {
