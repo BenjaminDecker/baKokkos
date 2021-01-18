@@ -475,7 +475,7 @@ void Simulation::moveParticles() {
         if(!hasMoved.view_host()(cellNumber)) {
           continue;
         }
-        hasMoved.view_host()(cellNumber) = true;
+        hasMoved.view_host()(cellNumber) = false;
         hasMoved.modify_host();
         const auto particles = getParticles(cellNumber);
         for (int particleIndex = particles.size() - 1; particleIndex >= 0; --particleIndex) {
