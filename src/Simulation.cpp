@@ -124,20 +124,21 @@ void Simulation::addParticle(const Particle &particle) {
 
 std::vector<Particle> Simulation::getParticles(int cellNumber) const {
   std::vector<Particle> particles;
-  spdlog::info("before");
-  auto h_positions = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(),
-                                                         Kokkos::subview(positions, cellNumber, Kokkos::ALL));
-  spdlog::info("after");
-  auto h_velocities = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(),
-                                                          Kokkos::subview(velocities, cellNumber, Kokkos::ALL));
-  auto h_forces = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(),
-                                                      Kokkos::subview(forces, cellNumber, Kokkos::ALL));
-  auto h_oldForces = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(),
-                                                         Kokkos::subview(oldForces, cellNumber, Kokkos::ALL));
-  auto h_particleIDs = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(),
-                                                           Kokkos::subview(particleIDs, cellNumber, Kokkos::ALL));
-  auto h_typeIDs = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(),
-                                                       Kokkos::subview(typeIDs, cellNumber, Kokkos::ALL));
+
+  auto h_positions = Kokkos::subview(positions, cellNumber, Kokkos::ALL);
+  auto h_velocities = Kokkos::subview(velocities, cellNumber, Kokkos::ALL);
+  auto h_forces = Kokkos::subview(forces, cellNumber, Kokkos::ALL);
+  auto h_oldForces = Kokkos::subview(oldForces, cellNumber, Kokkos::ALL);
+  auto h_particleIDs = Kokkos::subview(particleIDs, cellNumber, Kokkos::ALL);
+  auto h_typeIDs = Kokkos::subview(typeIDs, cellNumber, Kokkos::ALL);
+
+  Kokkos::deep_copy(h_positions, Kokkos::subview(positions, cellNumber, Kokkos::ALL));
+  Kokkos::deep_copy(h_velocities, Kokkos::subview(velocities, cellNumber, Kokkos::ALL));
+  Kokkos::deep_copy(h_forces, Kokkos::subview(forces, cellNumber, Kokkos::ALL));
+  Kokkos::deep_copy(h_oldForces, Kokkos::subview(oldForces, cellNumber, Kokkos::ALL));
+  Kokkos::deep_copy(h_particleIDs, Kokkos::subview(particleIDs, cellNumber, Kokkos::ALL));
+  Kokkos::deep_copy(h_typeIDs, Kokkos::subview(typeIDs, cellNumber, Kokkos::ALL));
+
   particles.reserve(cellSizes.view_host()(cellNumber));
   for (int iParticle = 0; iParticle < cellSizes.view_host()(cellNumber); ++iParticle) {
     particles.emplace_back(
