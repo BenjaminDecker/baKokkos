@@ -71,7 +71,7 @@ void Simulation::start() {
   Kokkos::Timer timer;
 
   //Iteration loop
-  for (; iteration < config.iterations; ++iteration) {
+  for (; iteration < 50; ++iteration) {
     if (iteration % 1000 == 0) {
       spdlog::info("Iteration: {:0" + std::to_string(std::to_string(config.iterations).length()) + "d}", iteration);
     }
