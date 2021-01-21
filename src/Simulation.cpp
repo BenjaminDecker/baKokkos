@@ -72,7 +72,7 @@ void Simulation::start() {
 
   //Iteration loop
   for (; iteration < 50; ++iteration) {
-    if (iteration % 1000 == 0) {
+    if (true) {
       spdlog::info("Iteration: {:0" + std::to_string(std::to_string(config.iterations).length()) + "d}", iteration);
     }
     Kokkos::Profiling::pushRegion("Iteration: " + std::to_string(iteration));
