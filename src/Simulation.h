@@ -57,19 +57,18 @@ class Simulation {
  public:
   const SimulationConfig config; /**< Configuration for the simulation */
   //CellsViewType cells; /**< Contains the linked cells that make up the simulation space */
-
-  CoordViewType positions;
-  CoordViewType forces;
-  CoordViewType oldForces;
-  CoordViewType velocities;
-  IntViewType typeIDs;
-  IntViewType particleIDs;
+  Kokkos::View<Coord3D**> positions;
+  Kokkos::View<Coord3D**> forces;
+  Kokkos::View<Coord3D**> oldForces;
+  Kokkos::View<Coord3D**> velocities;
+  Kokkos::View<int**> typeIDs;
+  Kokkos::View<int**> particleIDs;
   Kokkos::View<bool*> isHalo;
   decltype(Kokkos::create_mirror_view(isHalo)) h_isHalo;
   Kokkos::View<Coord3D *> bottomLeftCorners;
   Kokkos::DualView<int *> cellSizes;
   Kokkos::DualView<bool *> hasMoved;
-  std::vector<int> cellCapacities;
+  int capacities = 1;
 
   Kokkos::View<int *[27]> neighbours; /**< Contains the cell numbers of all neighbours for each cell */
   Kokkos::UnorderedMap<int, ParticleProperties> particleProperties; /**< Map of particle properties */

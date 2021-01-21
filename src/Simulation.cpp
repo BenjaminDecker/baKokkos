@@ -25,13 +25,17 @@ int getCellNumberFromRelativeCellCoordinatesDevice(int x, int y, int z, int numC
 }
 
 KOKKOS_INLINE_FUNCTION
-int getCorrectCellNumberDevice(const Coord3D &position, const Coord3D &boxMin, double cutoff, int numCellsX, int numCellsY) {
+int getCorrectCellNumberDevice(const Coord3D &position,
+                               const Coord3D &boxMin,
+                               double cutoff,
+                               int numCellsX,
+                               int numCellsY) {
   const Coord3D cellPosition = (position - boxMin) / cutoff;
   return getCellNumberFromRelativeCellCoordinatesDevice(static_cast<int>(cellPosition.x),
-                                                  static_cast<int>(cellPosition.y),
-                                                  static_cast<int>(cellPosition.z),
-                                                  numCellsX,
-                                                  numCellsY);
+                                                        static_cast<int>(cellPosition.y),
+                                                        static_cast<int>(cellPosition.z),
+                                                        numCellsX,
+                                                        numCellsY);
 }
 
 [[nodiscard]] KOKKOS_INLINE_FUNCTION
@@ -99,40 +103,39 @@ void Simulation::addParticle(const Particle &particle) {
   }
 
   int &size = cellSizes.view_host()(cellNumber);
-  int &capacity = cellCapacities[cellNumber];
-  if (size == cellCapacities[cellNumber]) {
-    capacity *= 2;
-    Kokkos::resize(positions(cellNumber), capacity);
-    Kokkos::resize(velocities(cellNumber), capacity);
-    Kokkos::resize(forces(cellNumber), capacity);
-    Kokkos::resize(oldForces(cellNumber), capacity);
-    Kokkos::resize(particleIDs(cellNumber), capacity);
-    Kokkos::resize(typeIDs(cellNumber), capacity);
+  if (size == capacities) {
+    capacities *= 2;
+    Kokkos::resize(positions, numCells, capacities);
+    Kokkos::resize(velocities, numCells, capacities);
+    Kokkos::resize(forces, numCells, capacities);
+    Kokkos::resize(oldForces, numCells, capacities);
+    Kokkos::resize(particleIDs, numCells, capacities);
+    Kokkos::resize(typeIDs, numCells, capacities);
   }
-  Kokkos::deep_copy(Kokkos::subview(positions(cellNumber), size), particle.position);
-  Kokkos::deep_copy(Kokkos::subview(velocities(cellNumber), size), particle.velocity);
-  Kokkos::deep_copy(Kokkos::subview(forces(cellNumber), size), particle.force);
-  Kokkos::deep_copy(Kokkos::subview(oldForces(cellNumber), size), particle.oldForce);
-  Kokkos::deep_copy(Kokkos::subview(particleIDs(cellNumber), size), particle.particleID);
-  Kokkos::deep_copy(Kokkos::subview(typeIDs(cellNumber), size), particle.typeID);
+  Kokkos::deep_copy(Kokkos::subview(positions, cellNumber, size), particle.position);
+  Kokkos::deep_copy(Kokkos::subview(velocities, cellNumber, size), particle.velocity);
+  Kokkos::deep_copy(Kokkos::subview(forces, cellNumber, size), particle.force);
+  Kokkos::deep_copy(Kokkos::subview(oldForces, cellNumber, size), particle.oldForce);
+  Kokkos::deep_copy(Kokkos::subview(particleIDs, cellNumber, size), particle.particleID);
+  Kokkos::deep_copy(Kokkos::subview(typeIDs, cellNumber, size), particle.typeID);
   ++size;
   cellSizes.modify_host();
 }
 
 std::vector<Particle> Simulation::getParticles(int cellNumber) const {
   std::vector<Particle> particles;
-  auto h_positions = Kokkos::create_mirror_view(positions(cellNumber));
-  auto h_velocities = Kokkos::create_mirror_view(velocities(cellNumber));
-  auto h_forces = Kokkos::create_mirror_view(forces(cellNumber));
-  auto h_oldForces = Kokkos::create_mirror_view(oldForces(cellNumber));
-  auto h_particleIDs = Kokkos::create_mirror_view(particleIDs(cellNumber));
-  auto h_typeIDs = Kokkos::create_mirror_view(typeIDs(cellNumber));
-  Kokkos::deep_copy(h_positions, positions(cellNumber));
-  Kokkos::deep_copy(h_velocities, velocities(cellNumber));
-  Kokkos::deep_copy(h_forces, forces(cellNumber));
-  Kokkos::deep_copy(h_oldForces, oldForces(cellNumber));
-  Kokkos::deep_copy(h_particleIDs, particleIDs(cellNumber));
-  Kokkos::deep_copy(h_typeIDs, typeIDs(cellNumber));
+  auto h_positions = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(),
+                                                         Kokkos::subview(positions, cellNumber, Kokkos::ALL));
+  auto h_velocities = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(),
+                                                          Kokkos::subview(velocities, cellNumber, Kokkos::ALL));
+  auto h_forces = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(),
+                                                      Kokkos::subview(forces, cellNumber, Kokkos::ALL));
+  auto h_oldForces = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(),
+                                                         Kokkos::subview(oldForces, cellNumber, Kokkos::ALL));
+  auto h_particleIDs = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(),
+                                                           Kokkos::subview(particleIDs, cellNumber, Kokkos::ALL));
+  auto h_typeIDs = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(),
+                                                       Kokkos::subview(typeIDs, cellNumber, Kokkos::ALL));
   particles.reserve(cellSizes.view_host()(cellNumber));
   for (int iParticle = 0; iParticle < cellSizes.view_host()(cellNumber); ++iParticle) {
     particles.emplace_back(
@@ -161,12 +164,12 @@ void Simulation::removeParticle(int cellNumber, int index) {
   int &size = cellSizes.view_host()(cellNumber);
   --size;
   cellSizes.modify_host();
-  Kokkos::deep_copy(Kokkos::subview(positions(cellNumber), index), Kokkos::subview(positions(cellNumber), size));
-  Kokkos::deep_copy(Kokkos::subview(velocities(cellNumber), index), Kokkos::subview(velocities(cellNumber), size));
-  Kokkos::deep_copy(Kokkos::subview(forces(cellNumber), index), Kokkos::subview(forces(cellNumber), size));
-  Kokkos::deep_copy(Kokkos::subview(oldForces(cellNumber), index), Kokkos::subview(oldForces(cellNumber), size));
-  Kokkos::deep_copy(Kokkos::subview(particleIDs(cellNumber), index), Kokkos::subview(particleIDs(cellNumber), size));
-  Kokkos::deep_copy(Kokkos::subview(typeIDs(cellNumber), index), Kokkos::subview(typeIDs(cellNumber), size));
+  Kokkos::deep_copy(Kokkos::subview(positions, cellNumber, index), Kokkos::subview(positions, cellNumber, size));
+  Kokkos::deep_copy(Kokkos::subview(velocities, cellNumber, index), Kokkos::subview(velocities, cellNumber, size));
+  Kokkos::deep_copy(Kokkos::subview(forces, cellNumber, index), Kokkos::subview(forces, cellNumber, size));
+  Kokkos::deep_copy(Kokkos::subview(oldForces, cellNumber, index), Kokkos::subview(oldForces, cellNumber, size));
+  Kokkos::deep_copy(Kokkos::subview(particleIDs, cellNumber, index), Kokkos::subview(particleIDs, cellNumber, size));
+  Kokkos::deep_copy(Kokkos::subview(typeIDs, cellNumber, index), Kokkos::subview(typeIDs, cellNumber, size));
 }
 
 void Simulation::calculateForces() const {
@@ -304,13 +307,13 @@ void Simulation::calculateForcesNewton3() const {
   Kokkos::parallel_for(
       "saveAndCopyForces  Iteration: " + std::to_string(iteration),
       Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, numCells),
-      KOKKOS_LAMBDA (int cellNumber) {
+      KOKKOS_LAMBDA(int cellNumber) {
         for (int i = 0; i < cellSizesCopy.view_device()(cellNumber); ++i) {
-          oldForcesCopy(cellNumber)(i) = forcesCopy(cellNumber)(i);
-          forcesCopy(cellNumber)(i) = globalForceCopy;
+          oldForcesCopy(cellNumber,i) = forcesCopy(cellNumber,i);
+          forcesCopy(cellNumber,i) = globalForceCopy;
         }
       }
-      );
+  );
   Kokkos::fence();
 
   for (int color = 0; color < 8; ++color) {
@@ -336,11 +339,11 @@ void Simulation::calculateForcesNewton3() const {
             for (int id_2 = id_1 + 1; id_2 < cellSizesCopy.view_device()(baseCellNumber); ++id_2) {
 
               const Coord3D actingForce = calculator(
-                  positionsCopy(baseCellNumber)(id_1).distanceTo(positionsCopy(baseCellNumber)(id_2)),
+                  positionsCopy(baseCellNumber,id_1).distanceTo(positionsCopy(baseCellNumber,id_2)),
                   cutoffCopy
               );
-              forcesCopy(baseCellNumber)(id_1) += actingForce;
-              forcesCopy(baseCellNumber)(id_2) += actingForce * (-1);
+              forcesCopy(baseCellNumber,id_1) += actingForce;
+              forcesCopy(baseCellNumber,id_2) += actingForce * (-1);
             }
           }
           for (int pairNumber = 0; pairNumber < 13; ++pairNumber) {
@@ -350,11 +353,11 @@ void Simulation::calculateForcesNewton3() const {
               for (int id_1 = 0; id_1 < cellSizesCopy.view_device()(cellOneNumber); ++id_1) {
                 for (int id_2 = 0; id_2 < cellSizesCopy.view_device()(cellTwoNumber); ++id_2) {
                   const Coord3D actingForce = calculator(
-                      positionsCopy(cellOneNumber)(id_1).distanceTo(positionsCopy(cellTwoNumber)(id_2)),
+                      positionsCopy(cellOneNumber,id_1).distanceTo(positionsCopy(cellTwoNumber,id_2)),
                       cutoffCopy
                   );
-                  forcesCopy(cellOneNumber)(id_1) += actingForce;
-                  forcesCopy(cellTwoNumber)(id_2) += actingForce * (-1);
+                  forcesCopy(cellOneNumber,id_1) += actingForce;
+                  forcesCopy(cellTwoNumber,id_2) += actingForce * (-1);
                 }
               }
             } else {
@@ -371,9 +374,9 @@ void Simulation::calculateForcesNewton3() const {
                       bottomLeftCornersCopy(periodicTargetCellNumber).distanceTo(bottomLeftCornersCopy(haloCellNumber));
                   for (int id_1 = 0; id_1 < cellSizesCopy.view_device()(normalCellNumber); ++id_1) {
                     for (int id_2 = 0; id_2 < cellSizesCopy.view_device()(periodicTargetCellNumber); ++id_2) {
-                      forcesCopy(normalCellNumber)(id_1) += calculator(
-                          positionsCopy(normalCellNumber)(id_1).distanceTo(
-                              positionsCopy(periodicTargetCellNumber)(id_2)
+                      forcesCopy(normalCellNumber,id_1) += calculator(
+                          positionsCopy(normalCellNumber,id_1).distanceTo(
+                              positionsCopy(periodicTargetCellNumber,id_2)
                           ) + offset,
                           cutoffCopy
                       );
@@ -388,7 +391,7 @@ void Simulation::calculateForcesNewton3() const {
                     continue;
                   }
                   for (int id = 0; id < cellSizesCopy.view_device()(normalCellNumber); ++id) {
-                    const Coord3D position = positionsCopy(normalCellNumber)(id);
+                    const Coord3D position = positionsCopy(normalCellNumber,id);
                     Coord3D ghostPosition = position + offset;
                     const auto haloCellBottomLeftCorner = bottomLeftCornersCopy(haloCellNumber);
                     if (offset.x != 0) {
@@ -401,7 +404,7 @@ void Simulation::calculateForcesNewton3() const {
                       ghostPosition.z = haloCellBottomLeftCorner.z
                           + (cutoffCopy - (ghostPosition.z - haloCellBottomLeftCorner.z));
                     }
-                    forcesCopy(normalCellNumber)(id) += calculator(position.distanceTo(ghostPosition), cutoffCopy);
+                    forcesCopy(normalCellNumber,id) += calculator(position.distanceTo(ghostPosition), cutoffCopy);
                   }
                   break;
                 }
@@ -435,11 +438,12 @@ void Simulation::calculateVelocitiesAndPositions() const {
       Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, numCells),
       KOKKOS_LAMBDA(int cellNumber) {
         for (int i = 0; i < cellSizesCopy.view_device()(cellNumber); ++i) {
-          auto &velocity = velocitiesCopy(cellNumber)(i);
-          auto &position = positionsCopy(cellNumber)(i);
-          const auto force = forcesCopy(cellNumber)(i);
-          const auto oldForce = oldForcesCopy(cellNumber)(i);
-          const auto mass = particlePropertiesCopy.value_at(particlePropertiesCopy.find(typeIDsCopy(cellNumber)(i))).mass;
+          auto &velocity = velocitiesCopy(cellNumber,i);
+          auto &position = positionsCopy(cellNumber,i);
+          const auto force = forcesCopy(cellNumber,i);
+          const auto oldForce = oldForcesCopy(cellNumber,i);
+          const auto
+              mass = particlePropertiesCopy.value_at(particlePropertiesCopy.find(typeIDsCopy(cellNumber,i))).mass;
 
           velocity += (force + oldForce) * (deltaTCopy / (2 * mass));
           position += velocity * deltaTCopy + force * ((deltaTCopy * deltaTCopy) / (2 * mass));
@@ -450,7 +454,7 @@ void Simulation::calculateVelocitiesAndPositions() const {
               cutoffCopy,
               numCellsXCopy,
               numCellsYCopy
-              );
+          );
           if (cellNumber != correctCellNumber) {
             hasMovedCopy.view_device()(cellNumber) = true;
           }
@@ -467,12 +471,11 @@ void Simulation::moveParticles() {
   hasMoved.modify_device();
   hasMoved.sync_host();
 
-
   for (int x = 1; x < numCellsX - 1; ++x) {
     for (int y = 1; y < numCellsY - 1; ++y) {
       for (int z = 1; z < numCellsZ - 1; ++z) {
         const int cellNumber = getCellNumberFromRelativeCellCoordinates(x, y, z);
-        if(!hasMoved.view_host()(cellNumber)) {
+        if (!hasMoved.view_host()(cellNumber)) {
           continue;
         }
         hasMoved.view_host()(cellNumber) = false;
@@ -739,7 +742,6 @@ void Simulation::initializeSimulation() {
     hasMoved = Kokkos::DualView<bool *>("hasMoved", numCells);
     const auto cellSizesCopy = cellSizes;
     const auto hasMovedCopy = hasMoved;
-    cellCapacities.resize(numCells);
     Kokkos::parallel_for("initSizesAndCapacities", numCells, KOKKOS_LAMBDA(int i) {
       cellSizesCopy.view_device()(i) = 0;
       hasMovedCopy.view_device()(i) = false;
@@ -747,16 +749,15 @@ void Simulation::initializeSimulation() {
     for (int i = 0; i < numCells; ++i) {
       cellSizes.view_host()(i) = 0;
       hasMoved.view_host()(i) = false;
-      cellCapacities[i] = 1;
     }
     Kokkos::fence();
 
-    positions = CoordViewType(Kokkos::view_alloc("positions", Kokkos::WithoutInitializing), numCells);
-    forces = CoordViewType(Kokkos::view_alloc("forces", Kokkos::WithoutInitializing), numCells);
-    oldForces = CoordViewType(Kokkos::view_alloc("oldForces", Kokkos::WithoutInitializing), numCells);
-    velocities = CoordViewType(Kokkos::view_alloc("velocities", Kokkos::WithoutInitializing), numCells);
-    typeIDs = IntViewType(Kokkos::view_alloc("typeIDs", Kokkos::WithoutInitializing), numCells);
-    particleIDs = IntViewType(Kokkos::view_alloc("particleIDs", Kokkos::WithoutInitializing), numCells);
+    positions = Kokkos::View<Coord3D **>("positions", numCells, capacities);
+    forces = Kokkos::View<Coord3D **>("forces", numCells, capacities);
+    oldForces = Kokkos::View<Coord3D **>("oldForces", numCells, capacities);
+    velocities = Kokkos::View<Coord3D **>("velocities", numCells, capacities);
+    typeIDs = Kokkos::View<int **>("typeIDs", numCells, capacities);
+    particleIDs = Kokkos::View<int **>("particleIDs", numCells, capacities);
 
     //cells = CellsViewType(Kokkos::view_alloc(std::string("Cells"), Kokkos::WithoutInitializing), numCells);
     Kokkos::fence();
@@ -784,13 +785,6 @@ void Simulation::initializeSimulation() {
           //new(&cells[cellNumber]) Cell(1, isHaloCell, bottomLeftCorner);
           h_isHalo(cellNumber) = isHaloCell;
           h_bottomLeftCorners(cellNumber) = bottomLeftCorner;
-
-          new(&positions[cellNumber]) InnerCoordViewType("positions" + std::to_string(cellNumber), 1);
-          new(&forces[cellNumber]) InnerCoordViewType("forces" + std::to_string(cellNumber), 1);
-          new(&oldForces[cellNumber]) InnerCoordViewType("oldForces" + std::to_string(cellNumber), 1);
-          new(&velocities[cellNumber]) InnerCoordViewType("velocities" + std::to_string(cellNumber), 1);
-          new(&typeIDs[cellNumber]) InnerIntViewType("typeIDs" + std::to_string(cellNumber), 1);
-          new(&particleIDs[cellNumber]) InnerIntViewType("particleIDs" + std::to_string(cellNumber), 1);
 
 
           // For non-halo cells the periodicTargetCellNumber is equal to the cellNumber. For halo cells they are different.
