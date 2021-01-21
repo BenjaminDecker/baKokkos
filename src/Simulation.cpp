@@ -124,8 +124,10 @@ void Simulation::addParticle(const Particle &particle) {
 
 std::vector<Particle> Simulation::getParticles(int cellNumber) const {
   std::vector<Particle> particles;
+  spdlog::info("before");
   auto h_positions = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(),
                                                          Kokkos::subview(positions, cellNumber, Kokkos::ALL));
+  spdlog::info("after");
   auto h_velocities = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(),
                                                           Kokkos::subview(velocities, cellNumber, Kokkos::ALL));
   auto h_forces = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(),
