@@ -483,7 +483,9 @@ void Simulation::moveParticles() {
         }
         hasMoved.view_host()(cellNumber) = false;
         hasMoved.modify_host();
+        spdlog::info("before");
         const auto particles = getParticles(cellNumber);
+        spdlog::info("after");
         for (int particleIndex = particles.size() - 1; particleIndex >= 0; --particleIndex) {
           Particle particle = particles[particleIndex];
           const int correctCellNumber = getCorrectCellNumber(particle);
