@@ -67,7 +67,7 @@ void Simulation::start() {
   Kokkos::Timer timer;
 
   //Iteration loop
-  for (; iteration < 50; ++iteration) {
+  for (; iteration < 5; ++iteration) {
     if (true) {
       spdlog::info("Iteration: {:0" + std::to_string(std::to_string(config.iterations).length()) + "d}", iteration);
     }
@@ -79,9 +79,9 @@ void Simulation::start() {
     spdlog::info("move");
     moveParticles();
     spdlog::info("write");
-//    if (config.vtk && iteration % config.vtk.value().second == 0) {
-//      writeVTKFile(config.vtk.value().first);
-//    }
+    if (true) {
+      writeVTKFile(config.vtk.value().first);
+    }
     Kokkos::Profiling::popRegion();
   }
 
@@ -241,9 +241,22 @@ std::vector<Particle> Simulation::getParticles(int cellNumber) const {
 
 std::vector<Particle> Simulation::getParticles() const {
   std::vector<Particle> particles;
+  const auto h_positions = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(), positions);
+  const auto h_velocities = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(), velocities);
+  const auto h_forces = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(), forces);
+  const auto h_oldForces = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(), oldForces);
+  const auto h_particleIDs = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(), particleIDs);
+  const auto h_typeIDs = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(), typeIDs);
+
   for (int cellNumber = 0; cellNumber < numCells; ++cellNumber) {
-    for (const auto &particle : getParticles(cellNumber)) {
-      particles.push_back(particle);
+    for (int i = 0; i < cellSizes.view_host()(cellNumber); ++i) {
+      particles.emplace_back(h_particleIDs(cellNumber, i),
+                             h_typeIDs(cellNumber, i),
+                             h_positions(cellNumber, i),
+                             h_forces(cellNumber, i),
+                             h_velocities(cellNumber, i),
+                             h_oldForces(cellNumber, i)
+                             );
     }
   }
   return particles;
@@ -700,7 +713,9 @@ void Simulation::moveParticles() {
     moveWasSuccessfull.modify_device();
     moveWasSuccessfull.sync_host();
     if(!moveWasSuccessfull.view_host()()) {
+      spdlog::info("before: " + std::to_string(capacities.view_host()()));
       resize();
+      spdlog::info("after: " + std::to_string(capacities.view_host()()));
       moveWasSuccessfull.view_host()() = true;
       moveWasSuccessfull.sync_device();
     } else {
