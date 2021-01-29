@@ -578,7 +578,7 @@ void Simulation::moveParticles() {
   moveWasSuccessfull.view_host()() = true;
   moveWasSuccessfull.modify_host();
   moveWasSuccessfull.sync_device();
-  do {
+  while(true) {
     spdlog::info("Test");
     Kokkos::parallel_for("moveParticles", 1, KOKKOS_LAMBDA(int i) {
       for (int x = 1; x < numCellsXCopy - 1; ++x) {
@@ -592,6 +592,7 @@ void Simulation::moveParticles() {
 //          hasMoved.modify_device();
 //          const auto particles = getParticles(cellNumber);
             for (int particleIndex = cellSizesCopy.view_device()(cellNumber) - 1; particleIndex >= 0; --particleIndex) {
+
 //            Particle particle = particles[particleIndex];
               auto position = positionsCopy(cellNumber, particleIndex);
               const int correctCellNumber =
@@ -614,13 +615,13 @@ void Simulation::moveParticles() {
                   case none:
                   case reflecting: {
                     auto &size = cellSizesCopy.view_device()(cellNumber);
+                    --size;
                     positionsCopy(cellNumber, particleIndex) = positionsCopy(cellNumber, size);
                     velocitiesCopy(cellNumber, particleIndex) = velocitiesCopy(cellNumber, size);
                     forcesCopy(cellNumber, particleIndex) = forcesCopy(cellNumber, size);
                     oldForcesCopy(cellNumber, particleIndex) = oldForcesCopy(cellNumber, size);
                     particleIDsCopy(cellNumber, particleIndex) = particleIDsCopy(cellNumber, size);
                     typeIDsCopy(cellNumber, particleIndex) = typeIDsCopy(cellNumber, size);
-                    --size;
                   }
                     break;
                   case periodic: {
@@ -642,7 +643,7 @@ void Simulation::moveParticles() {
                     const auto otherCellNumber =
                         getCorrectCellNumberDevice(position, boxMinCopy, cutoffCopy, numCellsXCopy, numCellsYCopy);
                     auto &otherSize = cellSizesCopy.view_device()(otherCellNumber);
-                    if (otherSize + 1 > capacitiesCopy.view_device()()) {
+                    if (otherSize == capacitiesCopy.view_device()()) {
                       moveWasSuccessfullCopy.view_device()() = false;
                       return;
                     }
@@ -655,20 +656,20 @@ void Simulation::moveParticles() {
                     ++otherSize;
 
                     auto &size = cellSizesCopy.view_device()(cellNumber);
+                    --size;
                     positionsCopy(cellNumber, particleIndex) = positionsCopy(cellNumber, size);
                     velocitiesCopy(cellNumber, particleIndex) = velocitiesCopy(cellNumber, size);
                     forcesCopy(cellNumber, particleIndex) = forcesCopy(cellNumber, size);
                     oldForcesCopy(cellNumber, particleIndex) = oldForcesCopy(cellNumber, size);
                     particleIDsCopy(cellNumber, particleIndex) = particleIDsCopy(cellNumber, size);
                     typeIDsCopy(cellNumber, particleIndex) = typeIDsCopy(cellNumber, size);
-                    --size;
                   }
                     break;
                 }
               } else {
                 const auto otherCellNumber = correctCellNumber;
                 auto &otherSize = cellSizesCopy.view_device()(otherCellNumber);
-                if (otherSize + 1 > capacitiesCopy.view_device()()) {
+                if (otherSize == capacitiesCopy.view_device()()) {
                   moveWasSuccessfullCopy.view_device()() = false;
                   return;
                 }
@@ -681,13 +682,14 @@ void Simulation::moveParticles() {
                 ++otherSize;
 
                 auto &size = cellSizesCopy.view_device()(cellNumber);
+                --size;
                 positionsCopy(cellNumber, particleIndex) = positionsCopy(cellNumber, size);
                 velocitiesCopy(cellNumber, particleIndex) = velocitiesCopy(cellNumber, size);
                 forcesCopy(cellNumber, particleIndex) = forcesCopy(cellNumber, size);
                 oldForcesCopy(cellNumber, particleIndex) = oldForcesCopy(cellNumber, size);
                 particleIDsCopy(cellNumber, particleIndex) = particleIDsCopy(cellNumber, size);
                 typeIDsCopy(cellNumber, particleIndex) = typeIDsCopy(cellNumber, size);
-                --size;
+
               }
             }
           }
@@ -699,8 +701,12 @@ void Simulation::moveParticles() {
     moveWasSuccessfull.sync_host();
     if(!moveWasSuccessfull.view_host()()) {
       resize();
+      moveWasSuccessfull.view_host()() = true;
+      moveWasSuccessfull.sync_device();
+    } else {
+      break;
     }
-  } while(!moveWasSuccessfull.view_host()());
+  }
 }
 
 int Simulation::getCellNumberFromRelativeCellCoordinates(const int x, const int y, const int z) const {
