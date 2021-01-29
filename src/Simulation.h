@@ -68,7 +68,8 @@ class Simulation {
   Kokkos::View<Coord3D *> bottomLeftCorners;
   Kokkos::DualView<int *> cellSizes;
   Kokkos::DualView<bool *> hasMoved;
-  int capacities = 1;
+  Kokkos::DualView<bool> moveWasSuccessfull;
+  Kokkos::DualView<int> capacities;
 
   Kokkos::View<int *[27]> neighbours; /**< Contains the cell numbers of all neighbours for each cell */
   Kokkos::UnorderedMap<int, ParticleProperties> particleProperties; /**< Map of particle properties */
@@ -99,8 +100,12 @@ class Simulation {
   /// Starts the simulation loop
   void start();
 
+  void resize();
+
   /// Inserts the given particle into the correct cell
   void addParticle(const Particle &particle);
+
+  void addParticles(const std::vector<Particle> &particles);
 
   [[nodiscard]] std::vector<Particle> getParticles(int cellNumber) const;
 
@@ -156,6 +161,9 @@ class Simulation {
    * Returns the correct cell number of a particle, given by its position
    */
   [[nodiscard]] int getCorrectCellNumber(const Particle &particle) const;
+
+
+  [[nodiscard]] int getCorrectCellNumber(const Coord3D &position) const;
 
   /**
    * Returns a number from 0 to 7, representing the color of the cell with the given cell number for the c08 base cell

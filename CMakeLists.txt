@@ -13,7 +13,7 @@ include(FetchContent)
 FetchContent_Declare(
         kokkos
         GIT_REPOSITORY "https://github.com/kokkos/kokkos.git"
-        GIT_TAG "3.3.00"
+        GIT_TAG "3.3.01"
 )
 FetchContent_Declare(
         yaml-cpp

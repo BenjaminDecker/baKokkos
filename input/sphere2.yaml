@@ -6,8 +6,8 @@ Objects:
   Sphere:
     0:
       center: [ 0, 0, 0 ]
-      radius: 50
-      particle-spacing: 1.122462048
+      radius: 201
+      particle-spacing: 3
       velocity: [ 0, 0, 0 ]
       particle-type: 2
       particle-epsilon: 1
