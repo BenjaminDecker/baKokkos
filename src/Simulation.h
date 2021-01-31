@@ -13,34 +13,9 @@
 #include <Kokkos_DualView.hpp>
 #include <vector>
 
-#ifdef KOKKOS_ENABLE_CUDA
-/**
- * The memory space that is used for views that contain other views. The outer view has to be accessible by both the cpu
- * and the parallel device that the program is compiled for.
- * The program was compiled to use Cude as its parallel device so CudaUVMSpace has to used for the outer view.
- */
-#define SharedSpace Kokkos::CudaUVMSpace
-#endif
-#ifndef SharedSpace
-/**
- * The memory space that is used for views that contain other views. The outer view has to be accessible by both the cpu
- * and the parallel device that the program is compiled for.
- * The program was not compiled to use any special device so the DefaultExecutionSpace can be used for the outer view.
- */
-#define SharedSpace Kokkos::DefaultExecutionSpace
-#endif
-
-/**
- * A view of "cells" that each contain another view of type Cell which contains the particles of that cell
- *
- * @see Cell
- */
-typedef Kokkos::View<Cell *, SharedSpace> CellsViewType;
-
-typedef Kokkos::View<Coord3D *> InnerCoordViewType;
-typedef Kokkos::View<int *> InnerIntViewType;
-typedef Kokkos::View<InnerCoordViewType *, SharedSpace> CoordViewType;
-typedef Kokkos::View<InnerIntViewType *, SharedSpace> IntViewType;
+enum BoundaryCondition {
+  none, periodic, reflecting
+};
 
 /**
  * @brief This class controls the simulation. The simulation space is partitioned into cells, which contain the particles.
@@ -55,21 +30,20 @@ typedef Kokkos::View<InnerIntViewType *, SharedSpace> IntViewType;
  */
 class Simulation {
  public:
+  const BoundaryCondition boundaryCondition = reflecting;
   const SimulationConfig config; /**< Configuration for the simulation */
-  //CellsViewType cells; /**< Contains the linked cells that make up the simulation space */
   Kokkos::View<Coord3D**> positions;
   Kokkos::View<Coord3D**> forces;
   Kokkos::View<Coord3D**> oldForces;
   Kokkos::View<Coord3D**> velocities;
   Kokkos::View<int**> typeIDs;
   Kokkos::View<int**> particleIDs;
+
   Kokkos::View<bool*> isHalo;
-  decltype(Kokkos::create_mirror_view(isHalo)) h_isHalo;
   Kokkos::View<Coord3D *> bottomLeftCorners;
-  Kokkos::DualView<int *> cellSizes;
-  Kokkos::DualView<bool *> hasMoved;
-  Kokkos::DualView<bool> moveWasSuccessfull;
-  Kokkos::DualView<int> capacities;
+  Kokkos::View<int *> cellSizes;
+  Kokkos::View<int> capacity;
+  Kokkos::View<bool*> hasMoved;
 
   Kokkos::View<int *[27]> neighbours; /**< Contains the cell numbers of all neighbours for each cell */
   Kokkos::UnorderedMap<int, ParticleProperties> particleProperties; /**< Map of particle properties */
@@ -80,6 +54,7 @@ class Simulation {
   int numCellsZ; /**< Number of cells in the z-direction */
   int numCells; /**< Total number of cells */
   int iteration; /**< The current iteration */
+  Kokkos::View<bool> moveWasSuccessful;
 
   /**
    * Contains the cell number of each periodic target cell on the opposite side of the simulation space for each halo
@@ -91,6 +66,8 @@ class Simulation {
   /// Contains 8 views of c08-base-cell cell numbers for each of the 8 different colors of the c08 cell coloring
   std::array<Kokkos::View<int *>, 8> c08baseCells;
 
+  std::array<Kokkos::View<int *>, 27> moveParticlesBaseCells;
+
   /// Contains all cell pairs of the c08 base step for each of the c08 base cell numbers
   Kokkos::View<int *[13][2]> c08Pairs;
 
@@ -100,26 +77,10 @@ class Simulation {
   /// Starts the simulation loop
   void start();
 
-  void resize();
-
-  /// Inserts the given particle into the correct cell
-  void addParticle(const Particle &particle);
-
   void addParticles(const std::vector<Particle> &particles);
-
-  [[nodiscard]] std::vector<Particle> getParticles(int cellNumber) const;
 
   /// Returns a std::vector of all particles inside the simulation
   [[nodiscard]] std::vector<Particle> getParticles() const;
-
-  void removeParticle(int cellNumber, int index);
-
-  /**
-   * Calculates the force acting on every particle based on the lj 6-12 potential and the particles positions. For each
-   * particle in a cell, the force acting on that particle from every other particle in the same cell and in all
-   * neighbouring cells is calculated and added together, plus the global force acting on every particle.
-   */
-  void calculateForces() const;
 
   /**
    * Calculates the pairwise forces on particle pairs and adds the calculated force to both particles. This is more
@@ -169,7 +130,7 @@ class Simulation {
    * Returns a number from 0 to 7, representing the color of the cell with the given cell number for the c08 base cell
    * color scheme
    */
-  [[nodiscard]] int getCellColor(int cellNumber) const;
+  [[nodiscard]] std::pair<int, int> getCellColors(int cellNumber) const;
 
   /**
    * Writes a new vtk file containing information about the position, velocity, experienced force, typeID and particleID

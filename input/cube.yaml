@@ -4,8 +4,8 @@ iterations                       :  90000
 Objects:
   CubeGrid:
     0:  
-      particles-per-dimension    :  [10, 10, 10]
-      particle-spacing           :  2
+      particles-per-dimension    :  [11, 11, 11]
+      particle-spacing           :  1
       bottomLeftCorner           :  [0, 0, 0]
       velocity                   :  [0, 0, 0]
       particle-type              :  0
