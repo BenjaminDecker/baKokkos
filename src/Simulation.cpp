@@ -40,7 +40,7 @@ void Simulation::start() {
 //    spdlog::info("move");
     moveParticles();
 //    spdlog::info("write");
-    if (iteration % config.vtk->second == 0) {
+    if (config.vtk && iteration % config.vtk->second == 0) {
       writeVTKFile(config.vtk.value().first);
     }
 //    Kokkos::Profiling::popRegion();
