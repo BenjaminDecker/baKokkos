@@ -22,7 +22,6 @@ class Particle {
   Coord3D oldForce; /**< 3-dimensional force vector acting on particle from the previous iteration */
   Coord3D velocity; /**< 3-dimensional velocity vector */
 
-  KOKKOS_INLINE_FUNCTION
   Particle() = default;
 
   KOKKOS_INLINE_FUNCTION

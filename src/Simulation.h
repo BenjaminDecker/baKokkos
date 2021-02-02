@@ -5,7 +5,6 @@
 #pragma once
 
 #include "SimulationConfig/SimulationConfig.h"
-#include "Types/Cell.h"
 #include "Types/ParticleProperies.h"
 #include <spdlog//spdlog.h>
 #include <Kokkos_Core.hpp>

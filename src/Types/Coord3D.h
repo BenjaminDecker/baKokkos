@@ -26,11 +26,9 @@ class Coord3D {
   Coord3D() : x(0), y(0), z(0) {}
 
   /// The default copy contructor must be explicitly declared to have the KOKKOS_INLINE_FUNCTION annotation.
-  KOKKOS_INLINE_FUNCTION
   Coord3D(const Coord3D &rhs) = default;
 
   /// The default destructor must be explicitly declared to have the KOKKOS_INLINE_FUNCTION annotation.
-  KOKKOS_INLINE_FUNCTION
   ~Coord3D() = default;
 
   /// Convenient component-wise constructor.
@@ -158,8 +156,7 @@ class Coord3D {
 /**
  * Operator definition for convenient printing of a Coord3D object to a Stream.
  */
-KOKKOS_INLINE_FUNCTION
-std::ostream &operator<<(std::ostream &stream, const Coord3D &obj) {
+static std::ostream &operator<<(std::ostream &stream, const Coord3D &obj) {
   stream << "( " << obj.x << ", " << obj.y << ", " << obj.z << " )";
   return stream;
 }
