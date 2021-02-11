@@ -16,6 +16,7 @@ YamlParser::YamlParser(const std::string &fileName) {
   static constexpr auto cubeGridStr = "CubeGrid";
   static constexpr auto sphereStr = "Sphere";
   static constexpr auto cubeClosestPackedStr = "CubeClosestPacked";
+  static constexpr auto gaussianGeneratorStr = "GaussianGenerator";
   static constexpr auto particleTypeStr = "particle-type";
   static constexpr auto particleSpacingStr = "particle-spacing";
   static constexpr auto particleEpsilonStr = "particle-epsilon";
@@ -27,6 +28,9 @@ YamlParser::YamlParser(const std::string &fileName) {
   static constexpr auto radiusStr = "radius";
   static constexpr auto centerStr = "center";
   static constexpr auto boxLengthStr = "box-length";
+  static constexpr auto numParticlesStr = "num-particles";
+  static constexpr auto distributionMeanStr = "distribution-mean";
+  static constexpr auto distributionStdDevStr = "distribution-std-dev";
   YAML::Node config = YAML::LoadFile(fileName);
   if (config[iterationsStr]) {
     iterations = config[iterationsStr].as<int>();
@@ -167,6 +171,53 @@ YamlParser::YamlParser(const std::string &fileName) {
                 particleMass,
                 bottomLeftCorner,
                 boxLength));
+      }
+    }
+
+    if (objectIterator->first.as<std::string>() == gaussianGeneratorStr) {
+      for (auto gaussianGeneratorIterator = objectIterator->second.begin();
+           gaussianGeneratorIterator != objectIterator->second.end();
+           ++gaussianGeneratorIterator) {
+        auto gaussianGenerator = gaussianGeneratorIterator->second;
+        auto typeID = gaussianGenerator[particleTypeStr].as<int>();
+        auto numParticles = gaussianGenerator[numParticlesStr].as<int>();
+        auto boxMinNode = gaussianGenerator[box_minStr];
+        auto boxMin = Coord3D(boxMinNode[0].as<double>(),
+                              boxMinNode[1].as<double>(),
+                              boxMinNode[2].as<double>());
+        auto boxMaxNode = gaussianGenerator[box_maxStr];
+        auto boxMax = Coord3D(boxMaxNode[0].as<double>(),
+                              boxMaxNode[1].as<double>(),
+                              boxMaxNode[2].as<double>());
+        auto distributionMeanNode = gaussianGenerator[distributionMeanStr];
+        auto distributionMean = Coord3D(distributionMeanNode[0].as<double>(),
+                                        distributionMeanNode[1].as<double>(),
+                                        distributionMeanNode[2].as<double>());
+        auto distributionStdDevNode = gaussianGenerator[distributionStdDevStr];
+        auto distributionStdDev = Coord3D(distributionStdDevNode[0].as<double>(),
+                                          distributionStdDevNode[1].as<double>(),
+                                          distributionStdDevNode[2].as<double>());
+        auto particleEpsilon = gaussianGenerator[particleEpsilonStr].as<double>();
+        auto particleSigma = gaussianGenerator[particleSigmaStr].as<double>();
+        auto particleMass = gaussianGenerator[particleMassStr].as<double>();
+
+        auto velocityNode = gaussianGenerator[velocityStr];
+        auto velocity = Coord3D(velocityNode[0].as<double>(),
+                                velocityNode[1].as<double>(),
+                                velocityNode[2].as<double>());
+
+        particleGroups.push_back(
+            std::make_shared<GaussianGenerator>(
+                typeID,
+                numParticles,
+                velocity,
+                particleEpsilon,
+                particleSigma,
+                particleMass,
+                boxMin,
+                boxMax,
+                distributionMean,
+                distributionStdDev));
       }
     }
   }

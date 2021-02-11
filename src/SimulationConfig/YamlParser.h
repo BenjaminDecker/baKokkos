@@ -11,6 +11,7 @@
 #include "ParticleCuboid.h"
 #include "ParticleSphere.h"
 #include "CubeClosestPacked.h"
+#include "GaussianGenerator.h"
 
 /**
  * @brief and stores ParticleGroups from a given .yaml file
