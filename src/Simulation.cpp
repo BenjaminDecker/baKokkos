@@ -26,24 +26,21 @@ Simulation::Simulation(SimulationConfig config) : config(std::move(config)), ite
 void Simulation::start() {
   spdlog::info("Running Simulation...");
   Kokkos::Timer timer;
-  //Iteration loop
 //  cudaProfilerStart();
   for (; iteration < config.iterations; ++iteration) {
     if (iteration % 10 == 0) {
       spdlog::info("Iteration: {:0" + std::to_string(std::to_string(config.iterations).length()) + "d}", iteration);
     }
-//    Kokkos::Profiling::pushRegion("Iteration: " + std::to_string(iteration));
-//    spdlog::info("forces");
+    spdlog::info("forces");
     calculateForcesNewton3();
-//    spdlog::info("velocitiesAndPositions");
+    spdlog::info("velocitiesAndPositions");
     calculateVelocitiesAndPositions();
-//    spdlog::info("move");
+    spdlog::info("move");
     moveParticles();
-//    spdlog::info("write");
+    spdlog::info("write");
     if (config.vtk && iteration % config.vtk->second == 0) {
       writeVTKFile(config.vtk.value().first);
     }
-//    Kokkos::Profiling::popRegion();
   }
 //  cudaProfilerStop();
 
@@ -86,12 +83,12 @@ void Simulation::addParticles(const std::vector<Particle> &particles) {
     h_typeIDs(cellNumber, h_cellSizes(cellNumber)) = particle.typeID;
     ++h_cellSizes(cellNumber);
   }
-  positions = Kokkos::View<Coord3D**>("positions", numCells, h_capacity());
-  velocities = Kokkos::View<Coord3D**>("velocities", numCells, h_capacity());
-  forces = Kokkos::View<Coord3D**>("forces", numCells, h_capacity());
-  oldForces = Kokkos::View<Coord3D**>("oldForces", numCells, h_capacity());
-  particleIDs = Kokkos::View<int**>("particleIDs", numCells, h_capacity());
-  typeIDs = Kokkos::View<int**>("typeIDs", numCells, h_capacity());
+  Kokkos::resize(positions, numCells, h_capacity());
+  Kokkos::resize(velocities, numCells, h_capacity());
+  Kokkos::resize(forces, numCells, h_capacity());
+  Kokkos::resize(oldForces, numCells, h_capacity());
+  Kokkos::resize(particleIDs, numCells, h_capacity());
+  Kokkos::resize(typeIDs, numCells, h_capacity());
 
   Kokkos::deep_copy(positions, h_positions);
   Kokkos::deep_copy(velocities, h_velocities);
@@ -132,6 +129,8 @@ void Simulation::calculateForcesNewton3() const {
   Kokkos::deep_copy(oldForces, forces);
   Kokkos::deep_copy(forces, config.globalForce);
 
+  Kokkos::fence();
+
   for (int color = 0; color < 8; ++color) {
     const auto colorCells = c08baseCells[color];
     Kokkos::parallel_for(
@@ -145,6 +144,7 @@ void Simulation::calculateForcesNewton3() const {
 
 void Simulation::calculateVelocitiesAndPositions() const {
   Kokkos::deep_copy(hasMoved, false);
+  Kokkos::fence();
   Kokkos::parallel_for(
       "calculateVelocitiesAndPosition  Iteration: " + std::to_string(iteration),
       Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, numCells),
@@ -183,9 +183,6 @@ void Simulation::moveParticles() {
 }
 
 void Simulation::writeVTKFile(const std::string &fileBaseName) const {
-  if (!config.vtk) {
-    return;
-  }
   std::ostringstream strstr;
   auto maxNumDigits = std::to_string(config.iterations).length();
   std::vector<Particle> particles = getParticles();
@@ -334,9 +331,9 @@ void Simulation::initializeSimulation() {
       }
     }
 
-    // A two cell wide layer of empty cells is added around the simulation space to act as halo cells in the simulation.
-    boxMin = boxMin - Coord3D(config.cutoff, config.cutoff, config.cutoff);
-    boxMax = boxMax + Coord3D(config.cutoff, config.cutoff, config.cutoff);
+    // A one cell wide layer of empty cells is added around the simulation space to act as halo cells in the simulation.
+    boxMin = boxMin - Coord3D(config.cutoff, config.cutoff, config.cutoff) * 2;
+    boxMax = boxMax + Coord3D(config.cutoff, config.cutoff, config.cutoff) * 2;
 
     // The total size of the simulation, and with it the number of cells is calculated.
     const Coord3D boxSize = boxMax - boxMin + Coord3D(config.cutoff, config.cutoff, config.cutoff);

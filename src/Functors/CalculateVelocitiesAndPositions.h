@@ -8,8 +8,8 @@
 #include "../Simulation.h"
 
 class CalculateVelocitiesAndPositions {
-  const Kokkos::View<Coord3D**> velocities;
   const Kokkos::View<Coord3D**> positions;
+  const Kokkos::View<Coord3D**> velocities;
   const Kokkos::View<Coord3D**> forces;
   const Kokkos::View<Coord3D**> oldForces;
   const Kokkos::View<int**> typeIDs;
@@ -20,11 +20,12 @@ class CalculateVelocitiesAndPositions {
   const int numCells[3];
   const double cutoff;
   const double deltaT;
+  const Kokkos::View<bool*> isHalo;
 
  public:
   explicit CalculateVelocitiesAndPositions(const Simulation &simulation)
-      : velocities(simulation.velocities),
-        positions(simulation.positions),
+      : positions(simulation.positions),
+        velocities(simulation.velocities),
         forces(simulation.forces),
         oldForces(simulation.oldForces),
         typeIDs(simulation.typeIDs),
@@ -34,16 +35,20 @@ class CalculateVelocitiesAndPositions {
         boxMin(simulation.boxMin),
         numCells{simulation.numCellsX, simulation.numCellsY, simulation.numCellsZ},
         cutoff(simulation.config.cutoff),
-        deltaT(simulation.config.deltaT) {}
+        deltaT(simulation.config.deltaT),
+        isHalo(simulation.isHalo){}
 
   [[nodiscard]] KOKKOS_INLINE_FUNCTION int getCorrectCellNumberDevice(const Coord3D &position) const {
     const Coord3D cellPosition = (position - boxMin) / cutoff;
     return static_cast<int>(cellPosition.z) * numCells[0] * numCells[1] +
-    static_cast<int>(cellPosition.y) * numCells[0] +
-    static_cast<int>(cellPosition.x);
+        static_cast<int>(cellPosition.y) * numCells[0] +
+        static_cast<int>(cellPosition.x);
   }
 
   KOKKOS_INLINE_FUNCTION void operator() (int cellNumber) const {
+    if(isHalo(cellNumber)) {
+      return;
+    }
     for (int i = 0; i < cellSizes(cellNumber); ++i) {
       auto &velocity = velocities(cellNumber,i);
       auto &position = positions(cellNumber,i);

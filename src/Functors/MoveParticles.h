@@ -89,7 +89,7 @@ class MoveParticles {
               break;
             case reflecting:
               // This should not happen, time step or particle energy was too large
-              exit(-1);
+              exit(42);
             case periodic: {
               //TODO maybe there is a bug here
               int relativeX, relativeY, relativeZ;

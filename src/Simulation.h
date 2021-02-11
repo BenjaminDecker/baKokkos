@@ -29,7 +29,7 @@ enum BoundaryCondition {
  */
 class Simulation {
  public:
-  const BoundaryCondition boundaryCondition = reflecting;
+  const BoundaryCondition boundaryCondition = none;
   const SimulationConfig config; /**< Configuration for the simulation */
   Kokkos::View<Coord3D**> positions;
   Kokkos::View<Coord3D**> forces;
@@ -138,4 +138,20 @@ class Simulation {
   void writeVTKFile(const std::string &fileBaseName) const;
 
   void initializeSimulation();
+
+  void test() {
+    const auto particles = getParticles();
+    for(const auto &particle : particles) {
+      const auto velocity = particle.velocity;
+      const auto position = particle.position;
+      if(!(velocity == velocity) || !(position == position)) {
+        throw std::runtime_error("kek");
+      }
+      for(const auto &particle2 : particles) {
+        if(particle.particleID != particle2.particleID && particle.position.distanceTo(particle2.position).absoluteValue() < 0.9) {
+          throw std::runtime_error("kek2");
+        }
+      }
+    }
+  }
 };
