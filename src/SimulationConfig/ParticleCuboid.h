@@ -23,11 +23,11 @@ class ParticleCuboid : public ParticleGroup {
   const Coord3D particlesPerDimension;
 
   ParticleCuboid(int typeID,
-                 double spacing,
+                 float spacing,
                  Coord3D velocity,
-                 double particleEpsilon,
-                 double particleSigma,
-                 double particleMass,
+                 float particleEpsilon,
+                 float particleSigma,
+                 float particleMass,
                  Coord3D bottomLeftCorner,
                  Coord3D particlesPerDimension)
       : ParticleGroup(typeID, spacing, velocity, particleEpsilon, particleSigma, particleMass),

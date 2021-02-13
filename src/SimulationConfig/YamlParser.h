@@ -20,13 +20,14 @@
 class YamlParser {
  public:
   std::optional<int> iterations;
-  std::optional<double> deltaT;
-  std::optional<double> cutoff;
+  std::optional<float> deltaT;
+  std::optional<float> cutoff;
   std::optional<std::string> vtkFileName;
   std::optional<int> vtkWriteFrequency;
   std::optional<Coord3D> globalForce;
   std::optional<std::pair<Coord3D, Coord3D>> box;
   std::vector<std::shared_ptr<const ParticleGroup>> particleGroups;
+  std::optional<float> stdDev;
 
   explicit YamlParser(const std::string &fileName);
 };

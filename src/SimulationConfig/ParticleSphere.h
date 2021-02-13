@@ -11,15 +11,15 @@
 class ParticleSphere : public ParticleGroup {
  public:
   const Coord3D center;
-  const double radius;
+  const float radius;
   ParticleSphere(int typeID,
-                 double spacing,
+                 float spacing,
                  Coord3D velocity,
-                 double particleEpsilon,
-                 double particleSigma,
-                 double particleMass,
+                 float particleEpsilon,
+                 float particleSigma,
+                 float particleMass,
                  Coord3D center,
-                 double radius)
+                 float radius)
       : ParticleGroup(typeID, spacing, velocity, particleEpsilon, particleSigma, particleMass),
         center(center),
         radius(radius) {}
@@ -38,20 +38,20 @@ class ParticleSphere : public ParticleGroup {
 //    int idCounter = startID;
 //    particles.emplace_back(idCounter++, typeID, center, velocity);
 //
-//    const double gr = (sqrt(5.0) + 1.0) / 2.0;  // golden ratio = 1.6180339887498948482
-//    const double ga = (2.0 - gr) * (2.0 * M_PI);  // golden angle = 2.39996322972865332
+//    const float gr = (sqrt(5.0) + 1.0) / 2.0;  // golden ratio = 1.6180339887498948482
+//    const float ga = (2.0 - gr) * (2.0 * M_PI);  // golden angle = 2.39996322972865332
 //
 //    // Iterate over sphere shells of radius i * spacing
 //    for (int i = 1; i * spacing <= radius; ++i) {
-//      const double r = i * spacing; // Current radius
+//      const float r = i * spacing; // Current radius
 //
-//      const double shellArea = r * r * M_PI;
+//      const float shellArea = r * r * M_PI;
 //      const int particlesOnShell = static_cast<int>(shellArea * (1.0 / std::sqrt(spacing)));
 //
 //      // https://bduvenhage.me/geometry/2019/07/31/generating-equidistant-vectors.html
 //      for (int k = 1; k <= particlesOnShell; ++k) {
-//        const double lat = asin(-1.0 + 2.0 * double(k) / (particlesOnShell + 1));
-//        const double lon = ga * k;
+//        const float lat = asin(-1.0 + 2.0 * float(k) / (particlesOnShell + 1));
+//        const float lon = ga * k;
 //
 //        Coord3D position = Coord3D(cos(lon) * cos(lat) * r + center.x,
 //                                   sin(lon) * cos(lat) * r + center.y,

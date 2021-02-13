@@ -17,9 +17,9 @@ class SimulationConfig {
   /// Number of iterations to simulate
   const int iterations;
   /// Length of one time step of the simulation
-  const double deltaT;
+  const float deltaT;
   /// Maximum distance between two particles for which the force calculation can not be neglected to increase performance
-  const double cutoff;
+  const float cutoff;
   /// Global force acting on every particle in every time step
   const Coord3D globalForce;
   /// Pair of front-left-bottom corner and back-right-top corner of the simulation space cuboid
@@ -35,8 +35,8 @@ class SimulationConfig {
 
   SimulationConfig(const ContainerStructure container_structure,
                    const int iterations,
-                   const double delta_t,
-                   const double cutoff,
+                   const float delta_t,
+                   const float cutoff,
                    const Coord3D &global_force,
                    const std::optional<const std::pair<const Coord3D, const Coord3D>> &box,
                    const std::optional<const std::pair<const std::string, const int>> &vtk,
@@ -68,10 +68,10 @@ class SimulationConfig {
          "Structure type that is used to store and iterate over particles. Possible values: (DirectSum LinkedCells).",
          cxxopts::value<std::string>()->default_value("LinkedCells"))
         (iterationsStr, "Number of iterations to simulate", cxxopts::value<int>()->default_value("100000"))
-        (deltaTStr, "Length of one time step of the simulation", cxxopts::value<double>()->default_value("0.000002"))
+        (deltaTStr, "Length of one time step of the simulation", cxxopts::value<float>()->default_value("0.000002"))
         (cutoffStr,
          "Maximum distance between two particles for which the force calculation can not be neglected to increase performance",
-         cxxopts::value<double>()->default_value("3"))
+         cxxopts::value<float>()->default_value("3"))
         (vtk_filenameStr, "Basename for all VTK output files", cxxopts::value<std::string>())
         (vtk_write_frequencyStr,
          "Number of iterations after which a VTK file is written",
@@ -85,8 +85,8 @@ class SimulationConfig {
     }
     ContainerStructure containerStructure;
     int iterations;
-    double deltaT;
-    double cutoff;
+    float deltaT;
+    float cutoff;
     Coord3D globalForce;
     std::optional<const std::pair<const Coord3D, const Coord3D>> box;
     std::optional<const std::pair<const std::string, const int>> vtk;
@@ -104,8 +104,8 @@ class SimulationConfig {
       containerStructure = LinkedCells;
     }
     iterations = result[iterationsStr].as<int>();
-    deltaT = result[deltaTStr].as<double>();
-    cutoff = result[cutoffStr].as<double>();
+    deltaT = result[deltaTStr].as<float>();
+    cutoff = result[cutoffStr].as<float>();
     if (result[vtk_filenameStr].count() > 0) {
       vtk.emplace(result[vtk_filenameStr].as<std::string>(), result[vtk_write_frequencyStr].as<int>());
     }

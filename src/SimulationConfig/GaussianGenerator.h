@@ -21,9 +21,9 @@ class GaussianGenerator : public ParticleGroup {
   GaussianGenerator(int typeID,
                     int numParticles,
                     Coord3D velocity,
-                    double particleEpsilon,
-                    double particleSigma,
-                    double particleMass,
+                    float particleEpsilon,
+                    float particleSigma,
+                    float particleMass,
                     Coord3D boxMin,
                     Coord3D boxMax,
                     Coord3D distributionMean,
@@ -38,10 +38,10 @@ class GaussianGenerator : public ParticleGroup {
   [[nodiscard]] std::vector<Particle> getParticles(int startID = 0) const override {
     std::vector<Particle> particles;
     std::default_random_engine generator(42);
-    std::array<std::normal_distribution<double>, 3> distributions = {
-        std::normal_distribution<double>{distributionMean.x, distributionStdDev.x},
-        std::normal_distribution<double>{distributionMean.y, distributionStdDev.y},
-        std::normal_distribution<double>{distributionMean.z, distributionStdDev.z}};
+    std::array<std::normal_distribution<float>, 3> distributions = {
+        std::normal_distribution<float>{distributionMean.x, distributionStdDev.x},
+        std::normal_distribution<float>{distributionMean.y, distributionStdDev.y},
+        std::normal_distribution<float>{distributionMean.z, distributionStdDev.z}};
 
     for (unsigned long i = 0; i < numParticles; ++i) {
       Coord3D position (distributions[0](generator),
