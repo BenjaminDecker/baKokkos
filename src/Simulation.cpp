@@ -71,18 +71,18 @@ void Simulation::start() {
     if (iteration % 1000 == 0) {
       spdlog::info("Iteration: {:0" + std::to_string(std::to_string(config.iterations).length()) + "d}", iteration);
     }
-    Kokkos::Profiling::pushRegion("Iteration: " + std::to_string(iteration));
-    spdlog::info("forces");
+//    Kokkos::Profiling::pushRegion("Iteration: " + std::to_string(iteration));
+//    spdlog::info("forces");
     calculateForcesNewton3();
-    spdlog::info("velocitiesAndPositions");
-    calculateVelocitiesAndPositions();
-    spdlog::info("move");
-    moveParticles();
-    spdlog::info("write");
-    if (config.vtk && iteration % config.vtk.value().second == 0) {
-      writeVTKFile(config.vtk.value().first);
-    }
-    Kokkos::Profiling::popRegion();
+//    spdlog::info("velocitiesAndPositions");
+//    calculateVelocitiesAndPositions();
+//    spdlog::info("move");
+//    moveParticles();
+//    spdlog::info("write");
+//    if (config.vtk && iteration % config.vtk.value().second == 0) {
+//      writeVTKFile(config.vtk.value().first);
+//    }
+//    Kokkos::Profiling::popRegion();
   }
 
   const double time = timer.seconds();
