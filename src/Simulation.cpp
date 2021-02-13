@@ -67,7 +67,11 @@ void Simulation::addParticles(const std::vector<Particle> &particles) {
       exit(1);
     }
     if (h_cellSizes(cellNumber) == h_capacity()) {
-      h_capacity() *= 2;
+      if(h_capacity() == 1) {
+        h_capacity() = 10;
+      } else {
+        h_capacity() *= 1.1;
+      }
       Kokkos::resize(h_positions, numCells, h_capacity());
       Kokkos::resize(h_velocities, numCells, h_capacity());
       Kokkos::resize(h_forces, numCells, h_capacity());
