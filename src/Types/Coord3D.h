@@ -19,7 +19,7 @@
  */
 class Coord3D {
  public:
-  double x, y, z;
+  float x, y, z;
 
   /// The default contructor must be explicitly declared to have the KOKKOS_INLINE_FUNCTION annotation.
   KOKKOS_INLINE_FUNCTION
@@ -33,7 +33,7 @@ class Coord3D {
 
   /// Convenient component-wise constructor.
   KOKKOS_INLINE_FUNCTION
-  Coord3D(double x, double y, double z) : x(x), y(y), z(z) {}
+  Coord3D(float x, float y, float z) : x(x), y(y), z(z) {}
 
   /// Coordinates of the distance vector between two Corrd3D objects.
   [[nodiscard]] KOKKOS_INLINE_FUNCTION
@@ -43,7 +43,7 @@ class Coord3D {
 
   /// Distance from the coordinate origin.
   [[nodiscard]] KOKKOS_INLINE_FUNCTION
-  double absoluteValue() const {
+  float absoluteValue() const {
     return std::sqrt(x * x + y * y + z * z);
   }
 
@@ -59,15 +59,15 @@ class Coord3D {
     return Coord3D{x - rhs.x, y - rhs.y, z - rhs.z};
   }
 
-  /// Scalar multiplication of a Coord3D with a double.
+  /// Scalar multiplication of a Coord3D with a float.
   KOKKOS_INLINE_FUNCTION
-  Coord3D operator*(double rhs) const {
+  Coord3D operator*(float rhs) const {
     return Coord3D{x * rhs, y * rhs, z * rhs};
   }
 
-  /// Scalar division of a Coord3D with a double.
+  /// Scalar division of a Coord3D with a float.
   KOKKOS_INLINE_FUNCTION
-  Coord3D operator/(double rhs) const {
+  Coord3D operator/(float rhs) const {
     return Coord3D{x / rhs, y / rhs, z / rhs};
   }
 
@@ -77,18 +77,18 @@ class Coord3D {
     return x == rhs.x && y == rhs.y && z == rhs.z;
   }
 
-  /// Scalar *= of a Coord3D with a double.
+  /// Scalar *= of a Coord3D with a float.
   KOKKOS_INLINE_FUNCTION
-  Coord3D &operator*=(double rhs) {
+  Coord3D &operator*=(float rhs) {
     x = x * rhs;
     y = y * rhs;
     z = z * rhs;
     return *this;
   }
 
-  /// Scalar /= of a Coord3D with a double.
+  /// Scalar /= of a Coord3D with a float.
   KOKKOS_INLINE_FUNCTION
-  Coord3D &operator/=(double rhs) {
+  Coord3D &operator/=(float rhs) {
     x = x / rhs;
     y = y / rhs;
     z = z / rhs;
@@ -114,36 +114,36 @@ class Coord3D {
 
   /// Returns a point that was rotated from this points position along a line with the specified roll, pitch and yaw values in radians that goes through the specified point
   [[nodiscard]] KOKKOS_INLINE_FUNCTION
-  Coord3D rotateRollPitchYaw(double roll, double pitch, double yaw, const Coord3D &rotationPoint) const {
+  Coord3D rotateRollPitchYaw(float roll, float pitch, float yaw, const Coord3D &rotationPoint) const {
     // https://math.stackexchange.com/questions/2796055/3d-coordinate-rotation-using-roll-pitch-yaw
 
-    double sinRoll = std::sin(roll);
-    double cosRoll = std::cos(roll);
-    double sinPitch = std::sin(pitch);
-    double cosPitch = std::cos(pitch);
-    double sinYaw = std::sin(yaw);
-    double cosYaw = std::cos(yaw);
+    float sinRoll = std::sin(roll);
+    float cosRoll = std::cos(roll);
+    float sinPitch = std::sin(pitch);
+    float cosPitch = std::cos(pitch);
+    float sinYaw = std::sin(yaw);
+    float cosYaw = std::cos(yaw);
 
     Coord3D newPoint = Coord3D(x, y, z) + rotationPoint * (-1);
-    double newX = newPoint.x, newY = newPoint.y, newZ = newPoint.z;
+    float newX = newPoint.x, newY = newPoint.y, newZ = newPoint.z;
 
     // Rx
     {
-      double tmpY = newY, tmpZ = newZ;
+      float tmpY = newY, tmpZ = newZ;
       newY = tmpY * cosRoll - tmpZ * sinRoll;
       newZ = tmpY * sinRoll + tmpZ * cosRoll;
     }
 
     // Ry
     {
-      double tmpX = newX, tmpZ = newZ;
+      float tmpX = newX, tmpZ = newZ;
       newX = tmpX * cosPitch + tmpZ * sinPitch;
       newZ = -tmpX * sinPitch + tmpZ * cosPitch;
     }
 
     // Rz
     {
-      double tmpX = newX, tmpY = newY;
+      float tmpX = newX, tmpY = newY;
       newX = tmpX * cosYaw - tmpY * sinYaw;
       newY = tmpX * sinYaw + tmpY * cosYaw;
     }

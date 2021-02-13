@@ -7,11 +7,11 @@
 #include <Kokkos_Core.hpp>
 #include "../Simulation.h"
 
-constexpr double epsilon = 1;
-constexpr double sigma = 1;
-constexpr double sigmaPow6 = sigma * sigma * sigma * sigma * sigma * sigma;
-constexpr double twentyFourEpsilonSigmaPow6 = 24 * epsilon * sigmaPow6;
-constexpr double fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
+constexpr float epsilon = 1;
+constexpr float sigma = 1;
+constexpr float sigmaPow6 = sigma * sigma * sigma * sigma * sigma * sigma;
+constexpr float twentyFourEpsilonSigmaPow6 = 24 * epsilon * sigmaPow6;
+constexpr float fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
 
 class CalculateForces {
   const Kokkos::View<Coord3D**> positions;
@@ -23,7 +23,7 @@ class CalculateForces {
   const Kokkos::View<Coord3D *> bottomLeftCorners;
   const Kokkos::View<int*> baseCells;
   const int numCells[3];
-  const double cutoff;
+  const float cutoff;
   const BoundaryCondition boundaryCondition;
 
  public:
@@ -51,17 +51,17 @@ class CalculateForces {
 
   [[nodiscard]] KOKKOS_INLINE_FUNCTION
   Coord3D calculator(const Coord3D &distance) const {
-    const double distanceValue = distance.absoluteValue();
+    const float distanceValue = distance.absoluteValue();
     if (distanceValue > cutoff) {
       return Coord3D();
     }
-    const double distanceValuePow6 =
+    const float distanceValuePow6 =
         distanceValue * distanceValue * distanceValue * distanceValue * distanceValue *
             distanceValue;
-    const double distanceValuePow13 = distanceValuePow6 * distanceValuePow6 * distanceValue;
+    const float distanceValuePow13 = distanceValuePow6 * distanceValuePow6 * distanceValue;
 
     // https://www.ableitungsrechner.net/#expr=4%2A%CE%B5%28%28%CF%83%2Fr%29%5E12-%28%CF%83%2Fr%29%5E6%29&diffvar=r
-    const double forceValue =
+    const float forceValue =
         (twentyFourEpsilonSigmaPow6 * distanceValuePow6 - fourtyEightEpsilonSigmaPow12) /
             distanceValuePow13;
     return (distance * (forceValue / distanceValue));

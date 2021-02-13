@@ -56,7 +56,7 @@ class Simulation {
   Kokkos::View<bool> moveWasSuccessful;
 
   int numParticles;
-  double time;
+  float time;
 
   /**
    * Contains the cell number of each periodic target cell on the opposite side of the simulation space for each halo

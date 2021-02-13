@@ -9,15 +9,15 @@ int main(int argc, char *argv[]) {
   Kokkos::initialize(argc, argv);
   {
     int numParticles;
-    std::vector<double> times;
+    std::vector<float> times;
     for (int i = 0; i < 10; ++i) {
       Simulation simulation = Simulation(SimulationConfig::readConfig(argc, argv));
       numParticles = simulation.numParticles;
       simulation.start();
       times.push_back(simulation.time);
     }
-    double acc = 0;
-    for(double d : times) {
+    float acc = 0;
+    for(float d : times) {
       acc += d;
     }
     acc /= times.size();

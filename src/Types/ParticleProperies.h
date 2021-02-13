@@ -8,11 +8,11 @@
 
 class ParticleProperties {
  public:
-  double mass;
+  float mass;
 
   KOKKOS_INLINE_FUNCTION
   ParticleProperties() : mass(0.0) {}
 
   KOKKOS_INLINE_FUNCTION
-  explicit ParticleProperties(double mass) : mass(mass) {}
+  explicit ParticleProperties(float mass) : mass(mass) {}
 };

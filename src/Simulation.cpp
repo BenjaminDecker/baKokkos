@@ -204,7 +204,7 @@ void Simulation::writeVTKFile(const std::string &fileBaseName) const {
   // print positions
   vtkFile << "DATASET STRUCTURED_GRID" << "\n";
   vtkFile << "DIMENSIONS 1 1 1" << "\n";
-  vtkFile << "POINTS " << particles.size() << " double" << "\n";
+  vtkFile << "POINTS " << particles.size() << " float" << "\n";
   for (int i = 0; i < particles.size(); ++i) {
     auto coord = particles[i].position;
     vtkFile << coord.x << " " << coord.y << " " << coord.z << "\n";
@@ -213,7 +213,7 @@ void Simulation::writeVTKFile(const std::string &fileBaseName) const {
 
   vtkFile << "POINT_DATA " << particles.size() << "\n";
   // print velocities
-  vtkFile << "VECTORS velocities double" << "\n";
+  vtkFile << "VECTORS velocities float" << "\n";
   for (int i = 0; i < particles.size(); ++i) {
     auto coord = particles[i].velocity;
     vtkFile << coord.x << " " << coord.y << " " << coord.z << "\n";
@@ -221,7 +221,7 @@ void Simulation::writeVTKFile(const std::string &fileBaseName) const {
   vtkFile << "\n";
 
   // print Forces
-  vtkFile << "VECTORS forces double" << "\n";
+  vtkFile << "VECTORS forces float" << "\n";
   for (int i = 0; i < particles.size(); ++i) {
     auto coord = particles[i].force;
     vtkFile << coord.x << " " << coord.y << " " << coord.z << "\n";
@@ -292,12 +292,12 @@ void Simulation::initializeSimulation() {
       boxMin = config.box.value().first;
       boxMax = config.box.value().second;
     } else {
-      double lowestX = particles[0].position.x;
-      double lowestY = particles[0].position.y;
-      double lowestZ = particles[0].position.z;
-      double highestX = particles[0].position.x;
-      double highestY = particles[0].position.y;
-      double highestZ = particles[0].position.z;
+      float lowestX = particles[0].position.x;
+      float lowestY = particles[0].position.y;
+      float lowestZ = particles[0].position.z;
+      float highestX = particles[0].position.x;
+      float highestY = particles[0].position.y;
+      float highestZ = particles[0].position.z;
       Coord3D midPoint = Coord3D();
       for (auto &particle : particles) {
         lowestX = std::min(lowestX, particle.position.x);
@@ -505,7 +505,7 @@ void Simulation::initializeSimulation() {
   addParticles(particles);
   numParticles = particles.size();
   Kokkos::fence();
-  const double time = timer.seconds();
+  const float time = timer.seconds();
   spdlog::info("Finished initializing " + std::to_string(particles.size()) + " particles in " + std::to_string(numCells) + " cells. Time: "
                    + std::to_string(time) + " seconds.");
 }

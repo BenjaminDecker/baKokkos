@@ -18,8 +18,8 @@ class CalculateVelocitiesAndPositions {
   const Kokkos::UnorderedMap<int, ParticleProperties> particleProperties;
   const Coord3D boxMin;
   const int numCells[3];
-  const double cutoff;
-  const double deltaT;
+  const float cutoff;
+  const float deltaT;
   const Kokkos::View<bool*> isHalo;
 
  public:
