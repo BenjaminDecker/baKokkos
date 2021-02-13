@@ -21,6 +21,7 @@ int main(int argc, char *argv[]) {
     }
     outputFile << simulation.time / static_cast<float>(simulation.config.iterations);
     outputFile.close();
+    std::cout << "numCells: " << simulation.numCells << "\tlargestCell: " << simulation.largestCell << std::endl;
   }
   Kokkos::finalize();
   return 0;

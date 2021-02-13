@@ -506,6 +506,10 @@ void Simulation::initializeSimulation() {
   numParticles = particles.size();
   Kokkos::fence();
   const float time = timer.seconds();
+  auto h_sizes = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(), cellSizes);
+  for (int i = 0; i < numCells; ++i) {
+    largestCell = std::max(largestCell, h_sizes(i));
+  }
   spdlog::info("Finished initializing " + std::to_string(particles.size()) + " particles in " + std::to_string(numCells) + " cells. Time: "
                    + std::to_string(time) + " seconds.");
 }
