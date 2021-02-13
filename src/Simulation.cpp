@@ -28,23 +28,23 @@ void Simulation::start() {
   Kokkos::Timer timer;
 //  cudaProfilerStart();
   for (; iteration < config.iterations; ++iteration) {
-    if (iteration % 10 == 0) {
-      spdlog::info("Iteration: {:0" + std::to_string(std::to_string(config.iterations).length()) + "d}", iteration);
-    }
-    spdlog::info("forces");
+//    if (iteration % 10 == 0) {
+//      spdlog::info("Iteration: {:0" + std::to_string(std::to_string(config.iterations).length()) + "d}", iteration);
+//    }
+//    spdlog::info("forces");
     calculateForcesNewton3();
-    spdlog::info("velocitiesAndPositions");
+//    spdlog::info("velocitiesAndPositions");
     calculateVelocitiesAndPositions();
-    spdlog::info("move");
-    moveParticles();
-    spdlog::info("write");
+//    spdlog::info("move");
+//    moveParticles();
+//    spdlog::info("write");
     if (config.vtk && iteration % config.vtk->second == 0) {
       writeVTKFile(config.vtk.value().first);
     }
   }
 //  cudaProfilerStop();
 
-  const double time = timer.seconds();
+  time = timer.seconds();
   spdlog::info("Finished simulating. Time: " + std::to_string(time) + " seconds.");
 }
 
@@ -503,6 +503,7 @@ void Simulation::initializeSimulation() {
 
   // After all cells are initialized, the particles are added
   addParticles(particles);
+  numParticles = particles.size();
   Kokkos::fence();
   const double time = timer.seconds();
   spdlog::info("Finished initializing " + std::to_string(particles.size()) + " particles in " + std::to_string(numCells) + " cells. Time: "

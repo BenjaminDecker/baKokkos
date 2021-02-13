@@ -55,6 +55,9 @@ class Simulation {
   int iteration; /**< The current iteration */
   Kokkos::View<bool> moveWasSuccessful;
 
+  int numParticles;
+  double time;
+
   /**
    * Contains the cell number of each periodic target cell on the opposite side of the simulation space for each halo
    * cell. The size of the view is equal to the total amount of cells to enable easy access via cell number indices.
