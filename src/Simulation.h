@@ -103,6 +103,8 @@ class Simulation {
   /// Inserts the given particle into the correct cell
   void addParticle(const Particle &particle);
 
+  void addParticles(const std::vector<Particle> &particles);
+
   [[nodiscard]] std::vector<Particle> getParticles(int cellNumber) const;
 
   /// Returns a std::vector of all particles inside the simulation

@@ -89,6 +89,59 @@ void Simulation::start() {
   spdlog::info("Finished simulating. Time: " + std::to_string(time) + " seconds.");
 }
 
+void Simulation::addParticles(const std::vector<Particle> &particles) {
+  std::vector<std::vector<Particle>> particlesVector;
+  particlesVector.resize(numCells);
+  for(const auto &particle : particles) {
+    particlesVector[getCorrectCellNumber(particle)].push_back(particle);
+  }
+  for (int cellNumber = 0; cellNumber < numCells; ++cellNumber) {
+//    std::cout << cellNumber << " of " << numCells << std::endl;
+    auto h_positions = Kokkos::create_mirror_view(positions(cellNumber));
+    auto h_velocities = Kokkos::create_mirror_view(velocities(cellNumber));
+    auto h_forces = Kokkos::create_mirror_view(forces(cellNumber));
+    auto h_oldForces = Kokkos::create_mirror_view(oldForces(cellNumber));
+    auto h_particleIDs = Kokkos::create_mirror_view(particleIDs(cellNumber));
+    auto h_typeIDs = Kokkos::create_mirror_view(typeIDs(cellNumber));
+
+    int &size = cellSizes.view_host()(cellNumber);
+    int &capacity = cellCapacities[cellNumber];
+    for(const auto &particle : particlesVector[cellNumber]) {
+      if(size == capacity) {
+        capacity *= 2;
+        Kokkos::resize(h_positions, capacity);
+        Kokkos::resize(h_velocities, capacity);
+        Kokkos::resize(h_forces, capacity);
+        Kokkos::resize(h_oldForces, capacity);
+        Kokkos::resize(h_particleIDs, capacity);
+        Kokkos::resize(h_typeIDs, capacity);
+      }
+      h_positions(size) = particle.position;
+      h_velocities(size) = particle.velocity;
+      h_forces(size) = particle.force;
+      h_oldForces(size) = particle.oldForce;
+      h_particleIDs(size) = particle.particleID;
+      h_typeIDs(size) = particle.typeID;
+      ++size;
+    }
+    cellSizes.modify_host();
+    cellSizes.sync_device();
+    Kokkos::resize(positions(cellNumber), capacity);
+    Kokkos::resize(velocities(cellNumber), capacity);
+    Kokkos::resize(forces(cellNumber), capacity);
+    Kokkos::resize(oldForces(cellNumber), capacity);
+    Kokkos::resize(particleIDs(cellNumber), capacity);
+    Kokkos::resize(typeIDs(cellNumber), capacity);
+
+    Kokkos::deep_copy(positions(cellNumber), h_positions);
+    Kokkos::deep_copy(velocities(cellNumber), h_velocities);
+    Kokkos::deep_copy(forces(cellNumber), h_forces);
+    Kokkos::deep_copy(oldForces(cellNumber), h_oldForces);
+    Kokkos::deep_copy(particleIDs(cellNumber), h_particleIDs);
+    Kokkos::deep_copy(typeIDs(cellNumber), h_typeIDs);
+  }
+}
+
 void Simulation::addParticle(const Particle &particle) {
   const int cellNumber = getCorrectCellNumber(particle);
   if (cellNumber < 0 || numCells <= cellNumber) {
@@ -895,9 +948,7 @@ void Simulation::initializeSimulation() {
   }
   Kokkos::fence();
   // After all cells are initialized, the particles are added
-  for (auto &particle : particles) {
-    addParticle(particle);
-  }
+  addParticles(particles);
   Kokkos::fence();
   const double time = timer.seconds();
   spdlog::info("Finished initializing " + std::to_string(particles.size()) + " particles. Time: "
