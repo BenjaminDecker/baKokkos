@@ -1,36 +1,26 @@
-
 #include <Kokkos_Core.hpp>
 #include "Simulation.h"
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 #include "SimulationConfig/YamlParser.h"
+
+const auto folderName = "Test";
 
 int main(int argc, char *argv[]) {
   Kokkos::initialize(argc, argv);
   {
-    int numParticles;
-    std::vector<float> times;
-    for (int i = 0; i < 10; ++i) {
-      Simulation simulation = Simulation(SimulationConfig::readConfig(argc, argv));
-      numParticles = simulation.numParticles;
-      simulation.start();
-      times.push_back(simulation.time);
-    }
-    float acc = 0;
-    for(float d : times) {
-      acc += d;
-    }
-    acc /= times.size();
-
+    Simulation simulation = Simulation(SimulationConfig::readConfig(argc, argv));
+    simulation.start();
     YamlParser parser(argv[2]);
     std::ofstream outputFile;
-    outputFile.open("numParticles: " + std::to_string(numParticles) + "\tIterations: " + std::to_string(parser.iterations.value()));
+    std::filesystem::create_directory(folderName);
+    outputFile.open(std::string(folderName) + "/" + std::to_string(simulation.numParticles));
     if (!outputFile.is_open()) {
       throw std::runtime_error("");
     }
-    outputFile << acc << std::endl;
+    outputFile << simulation.time / static_cast<float>(simulation.config.iterations);
     outputFile.close();
-    std::cout << "Time: " <<  acc << " seconds" << std::endl;
   }
   Kokkos::finalize();
   return 0;
