@@ -20,7 +20,9 @@ void getRelativeCellCoordinatesDevice(int cellNumber, int cellsX, int cellsY, in
 }
 
 Simulation::Simulation(SimulationConfig config) : config(std::move(config)), iteration(0) {
+  Kokkos::Timer timer;
   initializeSimulation();
+  initTime = timer.seconds();
 }
 
 void Simulation::start() {
@@ -44,8 +46,8 @@ void Simulation::start() {
   }
 //  cudaProfilerStop();
 
-  time = timer.seconds();
-  spdlog::info("Finished simulating. Time: " + std::to_string(time) + " seconds.");
+  runTime = timer.seconds();
+//  spdlog::info("Finished simulating. Time: " + std::to_string(time) + " seconds.");
 }
 
 void Simulation::addParticles(const std::vector<Particle> &particles) {
