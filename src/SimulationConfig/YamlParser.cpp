@@ -32,10 +32,10 @@ YamlParser::YamlParser(const std::string &fileName) {
     iterations = config[iterationsStr].as<int>();
   }
   if (config[deltaTStr]) {
-    deltaT = config[deltaTStr].as<double>();
+    deltaT = config[deltaTStr].as<float>();
   }
   if (config[cutoffStr]) {
-    cutoff = config[cutoffStr].as<double>();
+    cutoff = config[cutoffStr].as<float>();
   }
   if (config[vtk_filenameStr]) {
     vtkFileName = config[vtk_filenameStr].as<std::string>();
@@ -44,17 +44,17 @@ YamlParser::YamlParser(const std::string &fileName) {
     vtkWriteFrequency = config[vtk_write_frequencyStr].as<int>();
   }
   if (config[globalForceStr]) {
-    globalForce = Coord3D(config[globalForceStr][0].as<double>(),
-                          config[globalForceStr][1].as<double>(),
-                          config[globalForceStr][2].as<double>());
+    globalForce = Coord3D(config[globalForceStr][0].as<float>(),
+                          config[globalForceStr][1].as<float>(),
+                          config[globalForceStr][2].as<float>());
   }
   if (config[box_minStr] && config[box_maxStr]) {
-    Coord3D boxMin = Coord3D(config[box_minStr][0].as<double>(),
-                             config[box_minStr][1].as<double>(),
-                             config[box_minStr][2].as<double>());
-    Coord3D boxMax = Coord3D(config[box_maxStr][0].as<double>(),
-                             config[box_maxStr][1].as<double>(),
-                             config[box_maxStr][2].as<double>());
+    Coord3D boxMin = Coord3D(config[box_minStr][0].as<float>(),
+                             config[box_minStr][1].as<float>(),
+                             config[box_minStr][2].as<float>());
+    Coord3D boxMax = Coord3D(config[box_maxStr][0].as<float>(),
+                             config[box_maxStr][1].as<float>(),
+                             config[box_maxStr][2].as<float>());
     box = {boxMin, boxMax};
   }
 
@@ -68,23 +68,23 @@ YamlParser::YamlParser(const std::string &fileName) {
            ++cuboidIterator) {
         auto cuboid = cuboidIterator->second;
         auto typeID = cuboid[particleTypeStr].as<int>();
-        auto spacing = cuboid[particleSpacingStr].as<double>();
-        auto particleEpsilon = cuboid[particleEpsilonStr].as<double>();
-        auto particleSigma = cuboid[particleSigmaStr].as<double>();
-        auto particleMass = cuboid[particleMassStr].as<double>();
+        auto spacing = cuboid[particleSpacingStr].as<float>();
+        auto particleEpsilon = cuboid[particleEpsilonStr].as<float>();
+        auto particleSigma = cuboid[particleSigmaStr].as<float>();
+        auto particleMass = cuboid[particleMassStr].as<float>();
 
         auto velocityNode = cuboid[velocityStr];
-        auto velocity = Coord3D(velocityNode[0].as<double>(),
-                                velocityNode[1].as<double>(),
-                                velocityNode[2].as<double>());
+        auto velocity = Coord3D(velocityNode[0].as<float>(),
+                                velocityNode[1].as<float>(),
+                                velocityNode[2].as<float>());
         auto bottomLeftCornerNode = cuboid[bottomLeftCornerStr];
-        auto bottomLeftCorner = Coord3D(bottomLeftCornerNode[0].as<double>(),
-                                        bottomLeftCornerNode[1].as<double>(),
-                                        bottomLeftCornerNode[2].as<double>());
+        auto bottomLeftCorner = Coord3D(bottomLeftCornerNode[0].as<float>(),
+                                        bottomLeftCornerNode[1].as<float>(),
+                                        bottomLeftCornerNode[2].as<float>());
         auto particlesPerDimensionNode = cuboid[particles_per_dimensionStr];
-        auto particlesPerDimension = Coord3D(particlesPerDimensionNode[0].as<double>(),
-                                             particlesPerDimensionNode[1].as<double>(),
-                                             particlesPerDimensionNode[2].as<double>());
+        auto particlesPerDimension = Coord3D(particlesPerDimensionNode[0].as<float>(),
+                                             particlesPerDimensionNode[1].as<float>(),
+                                             particlesPerDimensionNode[2].as<float>());
 
         particleGroups.push_back(
             std::make_shared<ParticleCuboid>(
@@ -105,20 +105,20 @@ YamlParser::YamlParser(const std::string &fileName) {
            ++sphereIterator) {
         auto sphere = sphereIterator->second;
         auto typeID = sphere[particleTypeStr].as<int>();
-        auto spacing = sphere[particleSpacingStr].as<double>();
-        auto particleEpsilon = sphere[particleEpsilonStr].as<double>();
-        auto particleSigma = sphere[particleSigmaStr].as<double>();
-        auto particleMass = sphere[particleMassStr].as<double>();
-        auto radius = sphere[radiusStr].as<double>();
+        auto spacing = sphere[particleSpacingStr].as<float>();
+        auto particleEpsilon = sphere[particleEpsilonStr].as<float>();
+        auto particleSigma = sphere[particleSigmaStr].as<float>();
+        auto particleMass = sphere[particleMassStr].as<float>();
+        auto radius = sphere[radiusStr].as<float>();
 
         auto velocityNode = sphere[velocityStr];
-        auto velocity = Coord3D(velocityNode[0].as<double>(),
-                                velocityNode[1].as<double>(),
-                                velocityNode[2].as<double>());
+        auto velocity = Coord3D(velocityNode[0].as<float>(),
+                                velocityNode[1].as<float>(),
+                                velocityNode[2].as<float>());
         auto centerNode = sphere[centerStr];
-        auto center = Coord3D(centerNode[0].as<double>(),
-                              centerNode[1].as<double>(),
-                              centerNode[2].as<double>());
+        auto center = Coord3D(centerNode[0].as<float>(),
+                              centerNode[1].as<float>(),
+                              centerNode[2].as<float>());
 
         particleGroups.push_back(
             std::make_shared<ParticleSphere>(
@@ -139,23 +139,23 @@ YamlParser::YamlParser(const std::string &fileName) {
            ++cubeClosestIterator) {
         auto cubeClosest = cubeClosestIterator->second;
         auto typeID = cubeClosest[particleTypeStr].as<int>();
-        auto spacing = cubeClosest[particleSpacingStr].as<double>();
-        auto particleEpsilon = cubeClosest[particleEpsilonStr].as<double>();
-        auto particleSigma = cubeClosest[particleSigmaStr].as<double>();
-        auto particleMass = cubeClosest[particleMassStr].as<double>();
+        auto spacing = cubeClosest[particleSpacingStr].as<float>();
+        auto particleEpsilon = cubeClosest[particleEpsilonStr].as<float>();
+        auto particleSigma = cubeClosest[particleSigmaStr].as<float>();
+        auto particleMass = cubeClosest[particleMassStr].as<float>();
 
         auto velocityNode = cubeClosest[velocityStr];
-        auto velocity = Coord3D(velocityNode[0].as<double>(),
-                                velocityNode[1].as<double>(),
-                                velocityNode[2].as<double>());
+        auto velocity = Coord3D(velocityNode[0].as<float>(),
+                                velocityNode[1].as<float>(),
+                                velocityNode[2].as<float>());
         auto bottomLeftCornerNode = cubeClosest[bottomLeftCornerStr];
-        auto bottomLeftCorner = Coord3D(bottomLeftCornerNode[0].as<double>(),
-                                        bottomLeftCornerNode[1].as<double>(),
-                                        bottomLeftCornerNode[2].as<double>());
+        auto bottomLeftCorner = Coord3D(bottomLeftCornerNode[0].as<float>(),
+                                        bottomLeftCornerNode[1].as<float>(),
+                                        bottomLeftCornerNode[2].as<float>());
         auto boxLengthNode = cubeClosest[boxLengthStr];
-        auto boxLength = Coord3D(boxLengthNode[0].as<double>(),
-                                 boxLengthNode[1].as<double>(),
-                                 boxLengthNode[2].as<double>());
+        auto boxLength = Coord3D(boxLengthNode[0].as<float>(),
+                                 boxLengthNode[1].as<float>(),
+                                 boxLengthNode[2].as<float>());
 
         particleGroups.push_back(
             std::make_shared<CubeClosestPacked>(

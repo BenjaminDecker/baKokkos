@@ -25,7 +25,7 @@ int getCellNumberFromRelativeCellCoordinatesDevice(int x, int y, int z, int numC
 }
 
 KOKKOS_INLINE_FUNCTION
-int getCorrectCellNumberDevice(const Coord3D &position, const Coord3D &boxMin, double cutoff, int numCellsX, int numCellsY) {
+int getCorrectCellNumberDevice(const Coord3D &position, const Coord3D &boxMin, float cutoff, int numCellsX, int numCellsY) {
   const Coord3D cellPosition = (position - boxMin) / cutoff;
   return getCellNumberFromRelativeCellCoordinatesDevice(static_cast<int>(cellPosition.x),
                                                   static_cast<int>(cellPosition.y),
@@ -35,23 +35,23 @@ int getCorrectCellNumberDevice(const Coord3D &position, const Coord3D &boxMin, d
 }
 
 [[nodiscard]] KOKKOS_INLINE_FUNCTION
-Coord3D calculator(const Coord3D &distance, double cutoff) {
-  constexpr double epsilon = 1;
-  constexpr double sigma = 1;
-  constexpr double sigmaPow6 = sigma * sigma * sigma * sigma * sigma * sigma;
-  constexpr double twentyFourEpsilonSigmaPow6 = 24 * epsilon * sigmaPow6;
-  constexpr double fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
-  const double distanceValue = distance.absoluteValue();
+Coord3D calculator(const Coord3D &distance, float cutoff) {
+  constexpr float epsilon = 1;
+  constexpr float sigma = 1;
+  constexpr float sigmaPow6 = sigma * sigma * sigma * sigma * sigma * sigma;
+  constexpr float twentyFourEpsilonSigmaPow6 = 24 * epsilon * sigmaPow6;
+  constexpr float fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
+  const float distanceValue = distance.absoluteValue();
   if (distanceValue > cutoff) {
     return Coord3D();
   }
-  const double distanceValuePow6 =
+  const float distanceValuePow6 =
       distanceValue * distanceValue * distanceValue * distanceValue * distanceValue *
           distanceValue;
-  const double distanceValuePow13 = distanceValuePow6 * distanceValuePow6 * distanceValue;
+  const float distanceValuePow13 = distanceValuePow6 * distanceValuePow6 * distanceValue;
 
   // https://www.ableitungsrechner.net/#expr=4%2A%CE%B5%28%28%CF%83%2Fr%29%5E12-%28%CF%83%2Fr%29%5E6%29&diffvar=r
-  const double forceValue =
+  const float forceValue =
       (twentyFourEpsilonSigmaPow6 * distanceValuePow6 - fourtyEightEpsilonSigmaPow12) /
           distanceValuePow13;
   return (distance * (forceValue / distanceValue));
@@ -85,7 +85,7 @@ void Simulation::start() {
 //    Kokkos::Profiling::popRegion();
   }
 
-  const double time = timer.seconds();
+  time = timer.seconds();
   spdlog::info("Finished simulating. Time: " + std::to_string(time) + " seconds.");
 }
 
@@ -225,24 +225,24 @@ void Simulation::removeParticle(int cellNumber, int index) {
 void Simulation::calculateForces() const {
   /*
 //TODO get from particlePropertiesLibrary
-  const double epsilon = 1;
-  const double sigma = 1;
-  const double sigmaPow6 = sigma * sigma * sigma * sigma * sigma * sigma;
-  const double twentyFourEpsilonSigmaPow6 = 24 * epsilon * sigmaPow6;
-  const double fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
+  const float epsilon = 1;
+  const float sigma = 1;
+  const float sigmaPow6 = sigma * sigma * sigma * sigma * sigma * sigma;
+  const float twentyFourEpsilonSigmaPow6 = 24 * epsilon * sigmaPow6;
+  const float fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
 
   const auto calculator = [=](const Coord3D &distance) {
-    const double distanceValue = distance.absoluteValue();
+    const float distanceValue = distance.absoluteValue();
     if (distanceValue > config.cutoff) {
       return Coord3D();
     }
-    const double distanceValuePow6 =
+    const float distanceValuePow6 =
         distanceValue * distanceValue * distanceValue * distanceValue * distanceValue *
             distanceValue;
-    const double distanceValuePow13 = distanceValuePow6 * distanceValuePow6 * distanceValue;
+    const float distanceValuePow13 = distanceValuePow6 * distanceValuePow6 * distanceValue;
 
     // https://www.ableitungsrechner.net/#expr=4%2A%CE%B5%28%28%CF%83%2Fr%29%5E12-%28%CF%83%2Fr%29%5E6%29&diffvar=r
-    const double forceValue =
+    const float forceValue =
         (twentyFourEpsilonSigmaPow6 * distanceValuePow6 - fourtyEightEpsilonSigmaPow12) /
             distanceValuePow13;
     return (distance * (forceValue / distanceValue));
@@ -333,11 +333,11 @@ void Simulation::calculateForces() const {
 
 void Simulation::calculateForcesNewton3() const {
   //TODO get from particlePropertiesLibrary
-  constexpr double epsilon = 1;
-  constexpr double sigma = 1;
-  constexpr double sigmaPow6 = sigma * sigma * sigma * sigma * sigma * sigma;
-  constexpr double twentyFourEpsilonSigmaPow6 = 24 * epsilon * sigmaPow6;
-  constexpr double fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
+  constexpr float epsilon = 1;
+  constexpr float sigma = 1;
+  constexpr float sigmaPow6 = sigma * sigma * sigma * sigma * sigma * sigma;
+  constexpr float twentyFourEpsilonSigmaPow6 = 24 * epsilon * sigmaPow6;
+  constexpr float fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
 
   const auto cellSizesCopy = cellSizes;
   const auto positionsCopy = positions;
@@ -644,7 +644,7 @@ void Simulation::writeVTKFile(const std::string &fileBaseName) const {
   // print positions
   vtkFile << "DATASET STRUCTURED_GRID" << "\n";
   vtkFile << "DIMENSIONS 1 1 1" << "\n";
-  vtkFile << "POINTS " << particles.size() << " double" << "\n";
+  vtkFile << "POINTS " << particles.size() << " float" << "\n";
   for (int i = 0; i < particles.size(); ++i) {
     auto coord = particles[i].position;
     vtkFile << coord.x << " " << coord.y << " " << coord.z << "\n";
@@ -653,7 +653,7 @@ void Simulation::writeVTKFile(const std::string &fileBaseName) const {
 
   vtkFile << "POINT_DATA " << particles.size() << "\n";
   // print velocities
-  vtkFile << "VECTORS velocities double" << "\n";
+  vtkFile << "VECTORS velocities float" << "\n";
   for (int i = 0; i < particles.size(); ++i) {
     auto coord = particles[i].velocity;
     vtkFile << coord.x << " " << coord.y << " " << coord.z << "\n";
@@ -661,7 +661,7 @@ void Simulation::writeVTKFile(const std::string &fileBaseName) const {
   vtkFile << "\n";
 
   // print Forces
-  vtkFile << "VECTORS forces double" << "\n";
+  vtkFile << "VECTORS forces float" << "\n";
   for (int i = 0; i < particles.size(); ++i) {
     auto coord = particles[i].force;
     vtkFile << coord.x << " " << coord.y << " " << coord.z << "\n";
@@ -729,12 +729,12 @@ void Simulation::initializeSimulation() {
       boxMin = config.box.value().first;
       boxMax = config.box.value().second;
     } else {
-      double lowestX = particles[0].position.x;
-      double lowestY = particles[0].position.y;
-      double lowestZ = particles[0].position.z;
-      double highestX = particles[0].position.x;
-      double highestY = particles[0].position.y;
-      double highestZ = particles[0].position.z;
+      float lowestX = particles[0].position.x;
+      float lowestY = particles[0].position.y;
+      float lowestZ = particles[0].position.z;
+      float highestX = particles[0].position.x;
+      float highestY = particles[0].position.y;
+      float highestZ = particles[0].position.z;
       Coord3D midPoint = Coord3D();
       for (auto &particle : particles) {
         lowestX = std::min(lowestX, particle.position.x);
@@ -949,8 +949,9 @@ void Simulation::initializeSimulation() {
   Kokkos::fence();
   // After all cells are initialized, the particles are added
   addParticles(particles);
+  numParticles = particles.size();
   Kokkos::fence();
-  const double time = timer.seconds();
+  const float time = timer.seconds();
   spdlog::info("Finished initializing " + std::to_string(particles.size()) + " particles. Time: "
                    + std::to_string(time) + " seconds.");
 }

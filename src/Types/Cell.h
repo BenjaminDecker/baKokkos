@@ -105,7 +105,7 @@ class Cell {
 
   /**
    * Adds a particle to the cell by appending its property information at the ends of the separate property views.
-   * If necessary, this also resizes the cell to double its capacity.
+   * If necessary, this also resizes the cell to float its capacity.
    * This function should only be called from host space.
    */
   void addParticle(const Particle &particle) {

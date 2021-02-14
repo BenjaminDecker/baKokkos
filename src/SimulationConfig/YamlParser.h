@@ -19,8 +19,8 @@
 class YamlParser {
  public:
   std::optional<int> iterations;
-  std::optional<double> deltaT;
-  std::optional<double> cutoff;
+  std::optional<float> deltaT;
+  std::optional<float> cutoff;
   std::optional<std::string> vtkFileName;
   std::optional<int> vtkWriteFrequency;
   std::optional<Coord3D> globalForce;

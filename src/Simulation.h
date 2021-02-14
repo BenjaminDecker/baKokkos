@@ -71,6 +71,9 @@ class Simulation {
   Kokkos::DualView<bool *> hasMoved;
   std::vector<int> cellCapacities;
 
+  int numParticles;
+  float time;
+
   Kokkos::View<int *[27]> neighbours; /**< Contains the cell numbers of all neighbours for each cell */
   Kokkos::UnorderedMap<int, ParticleProperties> particleProperties; /**< Map of particle properties */
   Coord3D boxMin; /**< Lower-Left-Front corner of the simulation space */

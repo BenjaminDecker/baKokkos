@@ -1,13 +1,25 @@
-
 #include <Kokkos_Core.hpp>
 #include "Simulation.h"
+#include <iostream>
+#include <fstream>
+#include <filesystem>
+#include "SimulationConfig/YamlParser.h"
 
 int main(int argc, char *argv[]) {
   Kokkos::initialize(argc, argv);
   {
-    // TODO add particles from command line. For now it is only possible to add particles from .yaml files
     Simulation simulation = Simulation(SimulationConfig::readConfig(argc, argv));
     simulation.start();
+    YamlParser parser(argv[2]);
+    std::ofstream outputFile;
+    const auto folderName = "Initialization";
+    std::filesystem::create_directory(folderName);
+    outputFile.open(std::string(folderName) + "/" + std::to_string(simulation.numParticles));
+    if (!outputFile.is_open()) {
+      throw std::runtime_error("");
+    }
+    outputFile << simulation.time / static_cast<float>(simulation.config.iterations);
+    outputFile.close();
   }
   Kokkos::finalize();
   return 0;
