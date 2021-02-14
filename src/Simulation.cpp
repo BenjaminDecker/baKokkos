@@ -88,7 +88,7 @@ void Simulation::start() {
   }
 
   runTime = timer.seconds();
-  spdlog::info("Finished simulating. Time: " + std::to_string(time) + " seconds.");
+//  spdlog::info("Finished simulating. Time: " + std::to_string(time) + " seconds.");
 }
 
 void Simulation::addParticles(const std::vector<Particle> &particles) {
