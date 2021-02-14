@@ -18,7 +18,7 @@ int main(int argc, char *argv[]) {
     if (!outputFile.is_open()) {
       throw std::runtime_error("");
     }
-    outputFile << simulation.initTime / static_cast<float>(simulation.config.iterations);
+    outputFile << simulation.initTime;
     outputFile.close();
 
     const auto runtimeFolderName = "Runtime";
