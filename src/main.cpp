@@ -9,6 +9,7 @@ int main(int argc, char *argv[]) {
   Kokkos::initialize(argc, argv);
   {
     Simulation simulation = Simulation(SimulationConfig::readConfig(argc, argv));
+    std::cout << "numCells: " << simulation.numCells << "\tlargestCell: " << simulation.largestCell << std::endl;
     simulation.start();
     YamlParser parser(argv[2]);
     std::ofstream outputFile;
@@ -20,7 +21,6 @@ int main(int argc, char *argv[]) {
     }
     outputFile << simulation.time / static_cast<float>(simulation.config.iterations);
     outputFile.close();
-    std::cout << "numCells: " << simulation.numCells << "\tlargestCell: " << simulation.largestCell << std::endl;
   }
   Kokkos::finalize();
   return 0;
