@@ -13,9 +13,9 @@ int main(int argc, char *argv[]) {
     simulation.start();
     YamlParser parser(argv[2]);
     std::ofstream outputFile;
-    const auto folderName = std::to_string(simulation.numParticles) + std::string("particles");
+    const auto folderName = "oneParticlePerCell";
     std::filesystem::create_directory(folderName);
-    outputFile.open(std::string(folderName) + "/" + std::to_string(parser.stdDev.value()));
+    outputFile.open(std::string(folderName) + "/" + std::to_string(simulation.numParticles));
     if (!outputFile.is_open()) {
       throw std::runtime_error("");
     }
