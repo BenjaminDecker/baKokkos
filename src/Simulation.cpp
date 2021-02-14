@@ -58,8 +58,10 @@ Coord3D calculator(const Coord3D &distance, float cutoff) {
 }
 
 Simulation::Simulation(SimulationConfig config) : config(std::move(config)), iteration(0) {
+  Kokkos::Timer timer;
   initializeSimulation();
   cellSizes.sync_device();
+  initTime = timer.seconds();
 }
 
 void Simulation::start() {
@@ -68,9 +70,9 @@ void Simulation::start() {
 
   //Iteration loop
   for (; iteration < config.iterations; ++iteration) {
-    if (iteration % 1000 == 0) {
-      spdlog::info("Iteration: {:0" + std::to_string(std::to_string(config.iterations).length()) + "d}", iteration);
-    }
+//    if (iteration % 1000 == 0) {
+//      spdlog::info("Iteration: {:0" + std::to_string(std::to_string(config.iterations).length()) + "d}", iteration);
+//    }
 //    Kokkos::Profiling::pushRegion("Iteration: " + std::to_string(iteration));
 //    spdlog::info("forces");
     calculateForcesNewton3();
@@ -85,7 +87,7 @@ void Simulation::start() {
 //    Kokkos::Profiling::popRegion();
   }
 
-  time = timer.seconds();
+  runTime = timer.seconds();
   spdlog::info("Finished simulating. Time: " + std::to_string(time) + " seconds.");
 }
 

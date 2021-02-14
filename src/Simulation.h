@@ -72,7 +72,8 @@ class Simulation {
   std::vector<int> cellCapacities;
 
   int numParticles;
-  float time;
+  float initTime;
+  float runTime;
 
   Kokkos::View<int *[27]> neighbours; /**< Contains the cell numbers of all neighbours for each cell */
   Kokkos::UnorderedMap<int, ParticleProperties> particleProperties; /**< Map of particle properties */
