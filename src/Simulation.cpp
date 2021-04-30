@@ -22,7 +22,6 @@ void getRelativeCellCoordinatesDevice(int cellNumber, int cellsX, int cellsY, in
 Simulation::Simulation(SimulationConfig config) : config(std::move(config)), iteration(0) {
   Kokkos::Timer timer;
   initializeSimulation();
-  initTime = timer.seconds();
 }
 
 void Simulation::start() {
@@ -46,7 +45,6 @@ void Simulation::start() {
   }
 //  cudaProfilerStop();
 
-  runTime = timer.seconds();
 //  spdlog::info("Finished simulating. Time: " + std::to_string(time) + " seconds.");
 }
 
@@ -505,13 +503,8 @@ void Simulation::initializeSimulation() {
 
   // After all cells are initialized, the particles are added
   addParticles(particles);
-  numParticles = particles.size();
   Kokkos::fence();
   const float time = timer.seconds();
-  auto h_sizes = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(), cellSizes);
-  for (int i = 0; i < numCells; ++i) {
-    largestCell = std::max(largestCell, h_sizes(i));
-  }
   spdlog::info("Finished initializing " + std::to_string(particles.size()) + " particles in " + std::to_string(numCells) + " cells. Time: "
                    + std::to_string(time) + " seconds.");
 }

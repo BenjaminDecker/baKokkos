@@ -8,28 +8,11 @@
 int main(int argc, char *argv[]) {
   Kokkos::initialize(argc, argv);
   {
+    // The simulation is created by reading the config information and creating and filling all necessary data structures
     Simulation simulation = Simulation(SimulationConfig::readConfig(argc, argv));
+
+    // The simulation loop is started
     simulation.start();
-    YamlParser parser(argv[2]);
-    std::ofstream outputFile;
-    const auto initFolderName = "Initialization";
-    std::filesystem::create_directory(initFolderName);
-    outputFile.open(std::string(initFolderName) + "/" + std::to_string(simulation.numParticles));
-    if (!outputFile.is_open()) {
-      throw std::runtime_error("");
-    }
-    outputFile << simulation.initTime;
-    outputFile.close();
-
-    const auto runtimeFolderName = "Runtime";
-    std::filesystem::create_directory(runtimeFolderName);
-    outputFile.open(std::string(runtimeFolderName) + "/" + std::to_string(simulation.numParticles));
-    if (!outputFile.is_open()) {
-      throw std::runtime_error("");
-    }
-    outputFile << simulation.runTime / static_cast<float>(simulation.config.iterations);
-    outputFile.close();
-
   }
   Kokkos::finalize();
   return 0;

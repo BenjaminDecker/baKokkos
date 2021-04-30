@@ -12,6 +12,7 @@
 #include <Kokkos_DualView.hpp>
 #include <vector>
 
+/// A Struct to define the boundary condition that is used in the simulation
 enum BoundaryCondition {
   none, periodic, reflecting
 };
@@ -29,22 +30,62 @@ enum BoundaryCondition {
  */
 class Simulation {
  public:
+  /// The boundary condition that is used in the simulation (Currently this is still hard-coded)
   const BoundaryCondition boundaryCondition = none;
-  const SimulationConfig config; /**< Configuration for the simulation */
+
+  /// Simulation configuration data
+  const SimulationConfig config;
+
+  /**
+   * A 2-dimensional view that saves all particle positions in all cells. The first index specifies the cell, the second
+   * index specifies the particle.
+   */
   Kokkos::View<Coord3D**> positions;
+
+  /**
+   * A 2-dimensional view that saves all particle forces in all cells. The first index specifies the cell, the second
+   * index specifies the particle.
+   */
   Kokkos::View<Coord3D**> forces;
+
+  /**
+   * A 2-dimensional view that saves all old particle forces in all cells. The first index specifies the cell, the second
+   * index specifies the particle.
+   */
   Kokkos::View<Coord3D**> oldForces;
+
+  /**
+   * A 2-dimensional view that saves all particle velocities in all cells. The first index specifies the cell, the second
+   * index specifies the particle.
+   */
   Kokkos::View<Coord3D**> velocities;
+
+  /**
+   * A 2-dimensional view that saves all particle typeIDs in all cells. The first index specifies the cell, the second
+   * index specifies the particle.
+   */
   Kokkos::View<int**> typeIDs;
+
+  /**
+   * A 2-dimensional view that saves all particleIDs in all cells. The first index specifies the cell, the second
+   * index specifies the particle.
+   */
   Kokkos::View<int**> particleIDs;
 
+  /// A view that saves for each cell whether it is a halo cell or not.
   Kokkos::View<bool*> isHalo;
-  Kokkos::View<Coord3D *> bottomLeftCorners;
-  Kokkos::View<int *> cellSizes;
-  Kokkos::View<int> capacity;
-  Kokkos::View<bool*> hasMoved;
 
-  int largestCell = 0;
+  /// A view that saves the bottom left corner coordinates for each cell.
+  Kokkos::View<Coord3D *> bottomLeftCorners;
+
+  /// A view that saves the amount of particles inside each cell.
+  Kokkos::View<int *> cellSizes;
+
+  /// A view that saves the capacity of all cells. All cells always have the same capacity.
+  Kokkos::View<int> capacity;
+
+  /// A view that saves whether or not a particle has moved outside of a cell in the last time step.
+  Kokkos::View<bool*> hasMoved;
 
   Kokkos::View<int *[27]> neighbours; /**< Contains the cell numbers of all neighbours for each cell */
   Kokkos::UnorderedMap<int, ParticleProperties> particleProperties; /**< Map of particle properties */
@@ -55,11 +96,14 @@ class Simulation {
   int numCellsZ; /**< Number of cells in the z-direction */
   int numCells; /**< Total number of cells */
   int iteration; /**< The current iteration */
+
+  /**
+   * A view that saves whether or not the move step was successful. Before each move step this is set to true. When a
+   * particle moves inside of a cell that has reached max capacity, the moveWasSuccessful property is set to false. If
+   * the move was not successful, the cells have to be resized.
+   */
   Kokkos::View<bool> moveWasSuccessful;
 
-  int numParticles;
-  float runTime;
-  float initTime;
 
   /**
    * Contains the cell number of each periodic target cell on the opposite side of the simulation space for each halo
@@ -143,21 +187,9 @@ class Simulation {
    */
   void writeVTKFile(const std::string &fileBaseName) const;
 
+  /**
+   * The simulation is initializes. Because of the gcc cuda compiler, the initialization of the simulation has to happen
+   * outside of the simulation constructor.
+   */
   void initializeSimulation();
-
-  void test() {
-    const auto particles = getParticles();
-    for(const auto &particle : particles) {
-      const auto velocity = particle.velocity;
-      const auto position = particle.position;
-      if(!(velocity == velocity) || !(position == position)) {
-        throw std::runtime_error("kek");
-      }
-      for(const auto &particle2 : particles) {
-        if(particle.particleID != particle2.particleID && particle.position.distanceTo(particle2.position).absoluteValue() < 0.9) {
-          throw std::runtime_error("kek2");
-        }
-      }
-    }
-  }
 };
