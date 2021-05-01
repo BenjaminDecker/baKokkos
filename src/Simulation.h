@@ -106,9 +106,10 @@ class Simulation {
 
 
   /**
-   * Contains the cell number of each periodic target cell on the opposite side of the simulation space for each halo
-   * cell. The size of the view is equal to the total amount of cells to enable easy access via cell number indices.
-   * This means that there are redundant entries for the non-halo cells.
+   * A view that contains the cell number of the periodic target cell on the opposite side of the simulation space for
+   * each halo cell. If a particle moves into a halo cell, it has to be moved into its periodic target cell instead.
+   * The size of the view is equal to the total amount of cells to enable easy access via cell number
+   * indices. This means that there are redundant entries for the non-halo cells.
    */
   Kokkos::View<int *> periodicTargetCellNumbers;
 
@@ -117,7 +118,11 @@ class Simulation {
 
   std::array<Kokkos::View<int *>, 27> moveParticlesBaseCells;
 
-  /// Contains all cell pairs of the c08 base step for each of the c08 base cell numbers
+  /**
+   * A view that saves all 13 cell pairs of the c08 base step for all base cells. The first index specifies the cell
+   * number of the base step, the second index specifies the pair of this base step, and the third index specifies the
+   * cell of this pair.
+   */
   Kokkos::View<int *[13][2]> c08Pairs;
 
   /// Initializes the simulation by creating all views and adding all particles

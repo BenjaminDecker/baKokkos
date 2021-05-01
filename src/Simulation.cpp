@@ -29,23 +29,14 @@ void Simulation::start() {
   Kokkos::Timer timer;
 //  cudaProfilerStart();
   for (; iteration < config.iterations; ++iteration) {
-//    if (iteration % 10 == 0) {
-//      spdlog::info("Iteration: {:0" + std::to_string(std::to_string(config.iterations).length()) + "d}", iteration);
-//    }
-//    spdlog::info("forces");
     calculateForcesNewton3();
-//    spdlog::info("velocitiesAndPositions");
     calculateVelocitiesAndPositions();
-//    spdlog::info("move");
-//    moveParticles();
-//    spdlog::info("write");
+    moveParticles();
     if (config.vtk && iteration % config.vtk->second == 0) {
       writeVTKFile(config.vtk.value().first);
     }
   }
 //  cudaProfilerStop();
-
-//  spdlog::info("Finished simulating. Time: " + std::to_string(time) + " seconds.");
 }
 
 void Simulation::addParticles(const std::vector<Particle> &particles) {
