@@ -7,7 +7,7 @@
 #include <Kokkos_Core.hpp>
 
 /**
- * @brief A map from particle IDs to various particle properties.
+ * @brief A mapping from particle IDs to various particle properties.
  *
  * The map can be accessed concurrently from inside of a Kokkos::parallel_for().
  */

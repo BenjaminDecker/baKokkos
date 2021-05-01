@@ -22,6 +22,10 @@ constexpr float twentyFourEpsilonSigmaPow6 = 24 * epsilon * sigmaPow6;
 /// The pre-computed value of 2 * (24 * epsilon * sigma^6) * sigma^6
 constexpr float fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
 
+/**
+ * A functor for use inside of a parallel_for(). Calculates the forces between particles for the c08 base step with the
+ * specified cell number
+ */
 class CalculateForces {
   /**
    * A 2-dimensional view that saves all particle positions in all cells. The first index specifies the cell, the second
