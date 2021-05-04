@@ -43,6 +43,21 @@ class MoveParticles {
     data.typeIDs(cellNumber, index) = data.typeIDs(cellNumber, size);
   }
 
+  KOKKOS_INLINE_FUNCTION bool copyParticle(int atIndex, int fromCell, int toCell) const {
+    auto &targetCellSize = data.cellSizes(toCell);
+    if (targetCellSize == data.capacity()) {
+      return false;
+    }
+    data.positions(toCell, targetCellSize) = data.positions(fromCell, atIndex);
+    data.velocities(toCell, targetCellSize) = data.velocities(fromCell, atIndex);
+    data.forces(toCell, targetCellSize) = data.forces(fromCell, atIndex);
+    data.oldForces(toCell, targetCellSize) = data.oldForces(fromCell, atIndex);
+    data.particleIDs(toCell, targetCellSize) = data.particleIDs(fromCell, atIndex);
+    data.typeIDs(toCell, targetCellSize) = data.typeIDs(fromCell, atIndex);
+    ++targetCellSize;
+    return true;
+  }
+
   KOKKOS_INLINE_FUNCTION void operator() (int index) const {
     const int cellNumber = baseCells(index);
       if (!data.hasMoved(cellNumber)) {
@@ -76,41 +91,21 @@ class MoveParticles {
                   (correctZ == 0 ? 1 : correctZ == data.numCells[2] - 1 ? -1 : 0) * data.cutoff * (data.numCells[2] - 2)
               );
               const auto otherCellNumber = getCorrectCellNumberDevice(position);
-              auto &otherSize = data.cellSizes(otherCellNumber);
-              if (otherSize == data.capacity()) {
+
+              if(!copyParticle(particleIndex, cellNumber, otherCellNumber)) {
                 data.moveWasSuccessful() = false;
                 return;
               }
-              data.positions(otherCellNumber, otherSize) = data.positions(cellNumber, particleIndex);
-              data.velocities(otherCellNumber, otherSize) = data.velocities(cellNumber, particleIndex);
-              data.forces(otherCellNumber, otherSize) = data.forces(cellNumber, particleIndex);
-              data.oldForces(otherCellNumber, otherSize) = data.oldForces(cellNumber, particleIndex);
-              data.particleIDs(otherCellNumber, otherSize) = data.particleIDs(cellNumber, particleIndex);
-              data.typeIDs(otherCellNumber, otherSize) = data.typeIDs(cellNumber, particleIndex);
-              ++otherSize;
-
               removeParticle(particleIndex, cellNumber);
             }
               break;
-
           }
         } else {
-          const auto cap = data.capacity();
-          auto &targetSize = data.cellSizes(targetCellNumber);
-          if (targetSize == data.capacity()) {
+          if (!copyParticle(particleIndex, cellNumber, targetCellNumber)) {
             data.moveWasSuccessful() = false;
             return;
           }
-          data.positions(targetCellNumber, targetSize) = data.positions(cellNumber, particleIndex);
-          data.velocities(targetCellNumber, targetSize) = data.velocities(cellNumber, particleIndex);
-          data.forces(targetCellNumber, targetSize) = data.forces(cellNumber, particleIndex);
-          data.oldForces(targetCellNumber, targetSize) = data.oldForces(cellNumber, particleIndex);
-          data.particleIDs(targetCellNumber, targetSize) = data.particleIDs(cellNumber, particleIndex);
-          data.typeIDs(targetCellNumber, targetSize) = data.typeIDs(cellNumber, particleIndex);
-          ++targetSize;
-
           removeParticle(particleIndex, cellNumber);
-
         }
       }
     data.hasMoved(cellNumber) = false;
