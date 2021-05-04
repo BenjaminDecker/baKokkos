@@ -75,7 +75,7 @@ YamlParser::YamlParser(const std::string &fileName) {
         auto spacing = cuboid[particleSpacingStr].as<float>();
         auto particleEpsilon = cuboid[particleEpsilonStr].as<float>();
         auto particleSigma = cuboid[particleSigmaStr].as<float>();
-        auto particleMass = cuboid[particleMassStr].as<float>();
+        auto particleMass = cuboid[particleMassStr].as<double>();
 
         auto velocityNode = cuboid[velocityStr];
         auto velocity = Coord3D(velocityNode[0].as<float>(),
@@ -112,7 +112,7 @@ YamlParser::YamlParser(const std::string &fileName) {
         auto spacing = sphere[particleSpacingStr].as<float>();
         auto particleEpsilon = sphere[particleEpsilonStr].as<float>();
         auto particleSigma = sphere[particleSigmaStr].as<float>();
-        auto particleMass = sphere[particleMassStr].as<float>();
+        auto particleMass = sphere[particleMassStr].as<double>();
         auto radius = sphere[radiusStr].as<float>();
 
         auto velocityNode = sphere[velocityStr];
@@ -146,7 +146,7 @@ YamlParser::YamlParser(const std::string &fileName) {
         auto spacing = cubeClosest[particleSpacingStr].as<float>();
         auto particleEpsilon = cubeClosest[particleEpsilonStr].as<float>();
         auto particleSigma = cubeClosest[particleSigmaStr].as<float>();
-        auto particleMass = cubeClosest[particleMassStr].as<float>();
+        auto particleMass = cubeClosest[particleMassStr].as<double>();
 
         auto velocityNode = cubeClosest[velocityStr];
         auto velocity = Coord3D(velocityNode[0].as<float>(),
@@ -200,7 +200,7 @@ YamlParser::YamlParser(const std::string &fileName) {
         stdDev = distributionStdDev.x;
         auto particleEpsilon = gaussianGenerator[particleEpsilonStr].as<float>();
         auto particleSigma = gaussianGenerator[particleSigmaStr].as<float>();
-        auto particleMass = gaussianGenerator[particleMassStr].as<float>();
+        auto particleMass = gaussianGenerator[particleMassStr].as<double>();
 
         auto velocityNode = gaussianGenerator[velocityStr];
         auto velocity = Coord3D(velocityNode[0].as<float>(),
