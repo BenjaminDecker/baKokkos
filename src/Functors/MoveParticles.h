@@ -8,83 +8,56 @@
 #include "../Simulation.h"
 
 class MoveParticles {
-  const Kokkos::View<Coord3D**> positions;
-  const Kokkos::View<Coord3D**> velocities;
-  const Kokkos::View<Coord3D**> forces;
-  const Kokkos::View<Coord3D**> oldForces;
-  const Kokkos::View<int**> particleIDs;
-  const Kokkos::View<int**> typeIDs;
-  const Kokkos::View<int*> cellSizes;
-  const Kokkos::View<bool*> hasMoved;
-  const Kokkos::View<bool*> isHalo;
-  const Kokkos::View<int> capacity;
-  const Kokkos::View<bool> moveWasSuccessful;
+
+  const FunctorData data;
+
+  /// A view that contains the cell numbers of the base steps that have to be calculated.
   const Kokkos::View<int*> baseCells;
-  const Coord3D boxMin;
-  const int numCells[3];
-  const int numCellsTotal;
-  const float cutoff;
-  const float deltaT;
-  const BoundaryCondition boundaryCondition;
 
  public:
-  MoveParticles(const Simulation &simulation, const Kokkos::View<int*> baseCells)
-      : positions(simulation.positions),
-        velocities(simulation.velocities),
-        forces(simulation.forces),
-        oldForces(simulation.oldForces),
-        particleIDs(simulation.particleIDs),
-        typeIDs(simulation.typeIDs),
-        cellSizes(simulation.cellSizes),
-        hasMoved(simulation.hasMoved),
-        isHalo(simulation.isHalo),
-        capacity(simulation.capacity),
-        moveWasSuccessful(simulation.moveWasSuccessful),
-        boxMin(simulation.boxMin),
-        numCells{simulation.numCellsX, simulation.numCellsY, simulation.numCellsZ},
-        numCellsTotal(simulation.numCells),
-        cutoff(simulation.config.cutoff),
-        deltaT(simulation.config.deltaT),
-        boundaryCondition(simulation.boundaryCondition),
-        baseCells(baseCells)
-  {}
+  MoveParticles(const FunctorData &functorData, const Kokkos::View<int*> &baseCells) : data(functorData), baseCells(baseCells) {}
 
   [[nodiscard]] KOKKOS_INLINE_FUNCTION int getCorrectCellNumberDevice(const Coord3D &position) const {
-    const Coord3D cellPosition = (position - boxMin) / cutoff;
-    return static_cast<int>(cellPosition.z) * numCells[0] * numCells[1] +
-        static_cast<int>(cellPosition.y) * numCells[0] +
+    const Coord3D cellPosition = (position - data.boxMin) / data.cutoff;
+    return static_cast<int>(cellPosition.z) * data.numCells[0] * data.numCells[1] +
+        static_cast<int>(cellPosition.y) * data.numCells[0] +
         static_cast<int>(cellPosition.x);
   }
 
   KOKKOS_INLINE_FUNCTION
   void getRelativeCellCoordinatesDevice(int cellNumber, int &x, int &y, int &z) const {
-    z = static_cast<int>(cellNumber / (numCells[0] * numCells[1]));
-    cellNumber -= z * (numCells[0] * numCells[1]);
-    y = static_cast<int>(cellNumber / numCells[0]);
-    x = static_cast<int>(cellNumber - y * numCells[0]);
+    z = static_cast<int>(cellNumber / (data.numCells[0] * data.numCells[1]));
+    cellNumber -= z * (data.numCells[0] * data.numCells[1]);
+    y = static_cast<int>(cellNumber / data.numCells[0]);
+    x = static_cast<int>(cellNumber - y * data.numCells[0]);
+  }
+
+  KOKKOS_INLINE_FUNCTION void removeParticle(int index, int cellNumber) const {
+    auto &size = data.cellSizes(cellNumber);
+    --size;
+    data.positions(cellNumber, index) = data.positions(cellNumber, size);
+    data.velocities(cellNumber, index) = data.velocities(cellNumber, size);
+    data.forces(cellNumber, index) = data.forces(cellNumber, size);
+    data.oldForces(cellNumber, index) = data.oldForces(cellNumber, size);
+    data.particleIDs(cellNumber, index) = data.particleIDs(cellNumber, size);
+    data.typeIDs(cellNumber, index) = data.typeIDs(cellNumber, size);
   }
 
   KOKKOS_INLINE_FUNCTION void operator() (int index) const {
     const int cellNumber = baseCells(index);
-      if (!hasMoved(cellNumber)) {
+      if (!data.hasMoved(cellNumber)) {
         return;
       }
-      for (int particleIndex = cellSizes(cellNumber) - 1; 0 <= particleIndex; --particleIndex) {
-        Coord3D position = positions(cellNumber, particleIndex);
+      for (int particleIndex = data.cellSizes(cellNumber) - 1; 0 <= particleIndex; --particleIndex) {
+        Coord3D position = data.positions(cellNumber, particleIndex);
         const int targetCellNumber = getCorrectCellNumberDevice(position);
         if (cellNumber == targetCellNumber) {
           continue;
         }
-        if (isHalo(targetCellNumber)) {
-          switch (boundaryCondition) {
+        if (data.isHalo(targetCellNumber)) {
+          switch (data.boundaryCondition) {
             case none: {
-              --cellSizes(cellNumber);
-              positions(cellNumber, particleIndex) = positions(cellNumber, cellSizes(cellNumber));
-              velocities(cellNumber, particleIndex) = velocities(cellNumber, cellSizes(cellNumber));
-              forces(cellNumber, particleIndex) = forces(cellNumber, cellSizes(cellNumber));
-              oldForces(cellNumber, particleIndex) = oldForces(cellNumber, cellSizes(cellNumber));
-              particleIDs(cellNumber, particleIndex) = particleIDs(cellNumber, cellSizes(cellNumber));
-              typeIDs(cellNumber, particleIndex) = typeIDs(cellNumber, cellSizes(cellNumber));
+              removeParticle(particleIndex, cellNumber);
             }
               break;
             case reflecting:
@@ -98,62 +71,48 @@ class MoveParticles {
               const int correctY = relativeY;
               const int correctZ = relativeZ;
               position += Coord3D(
-                  (correctX == 0 ? 1 : correctX == numCells[0] - 1 ? -1 : 0) * cutoff * (numCells[0] - 2),
-                  (correctY == 0 ? 1 : correctY == numCells[1] - 1 ? -1 : 0) * cutoff * (numCells[1] - 2),
-                  (correctZ == 0 ? 1 : correctZ == numCells[2] - 1 ? -1 : 0) * cutoff * (numCells[2] - 2)
+                  (correctX == 0 ? 1 : correctX == data.numCells[0] - 1 ? -1 : 0) * data.cutoff * (data.numCells[0] - 2),
+                  (correctY == 0 ? 1 : correctY == data.numCells[1] - 1 ? -1 : 0) * data.cutoff * (data.numCells[1] - 2),
+                  (correctZ == 0 ? 1 : correctZ == data.numCells[2] - 1 ? -1 : 0) * data.cutoff * (data.numCells[2] - 2)
               );
               const auto otherCellNumber = getCorrectCellNumberDevice(position);
-              auto &otherSize = cellSizes(otherCellNumber);
-              if (otherSize == capacity()) {
-                moveWasSuccessful() = false;
+              auto &otherSize = data.cellSizes(otherCellNumber);
+              if (otherSize == data.capacity()) {
+                data.moveWasSuccessful() = false;
                 return;
               }
-              positions(otherCellNumber, otherSize) = positions(cellNumber, particleIndex);
-              velocities(otherCellNumber, otherSize) = velocities(cellNumber, particleIndex);
-              forces(otherCellNumber, otherSize) = forces(cellNumber, particleIndex);
-              oldForces(otherCellNumber, otherSize) = oldForces(cellNumber, particleIndex);
-              particleIDs(otherCellNumber, otherSize) = particleIDs(cellNumber, particleIndex);
-              typeIDs(otherCellNumber, otherSize) = typeIDs(cellNumber, particleIndex);
+              data.positions(otherCellNumber, otherSize) = data.positions(cellNumber, particleIndex);
+              data.velocities(otherCellNumber, otherSize) = data.velocities(cellNumber, particleIndex);
+              data.forces(otherCellNumber, otherSize) = data.forces(cellNumber, particleIndex);
+              data.oldForces(otherCellNumber, otherSize) = data.oldForces(cellNumber, particleIndex);
+              data.particleIDs(otherCellNumber, otherSize) = data.particleIDs(cellNumber, particleIndex);
+              data.typeIDs(otherCellNumber, otherSize) = data.typeIDs(cellNumber, particleIndex);
               ++otherSize;
 
-              auto &size = cellSizes(cellNumber);
-              --size;
-              positions(cellNumber, particleIndex) = positions(cellNumber, size);
-              velocities(cellNumber, particleIndex) = velocities(cellNumber, size);
-              forces(cellNumber, particleIndex) = forces(cellNumber, size);
-              oldForces(cellNumber, particleIndex) = oldForces(cellNumber, size);
-              particleIDs(cellNumber, particleIndex) = particleIDs(cellNumber, size);
-              typeIDs(cellNumber, particleIndex) = typeIDs(cellNumber, size);
+              removeParticle(particleIndex, cellNumber);
             }
               break;
 
           }
         } else {
-          const auto cap = capacity();
-          auto &targetSize = cellSizes(targetCellNumber);
-          if (targetSize == capacity()) {
-            moveWasSuccessful() = false;
+          const auto cap = data.capacity();
+          auto &targetSize = data.cellSizes(targetCellNumber);
+          if (targetSize == data.capacity()) {
+            data.moveWasSuccessful() = false;
             return;
           }
-          positions(targetCellNumber, targetSize) = positions(cellNumber, particleIndex);
-          velocities(targetCellNumber, targetSize) = velocities(cellNumber, particleIndex);
-          forces(targetCellNumber, targetSize) = forces(cellNumber, particleIndex);
-          oldForces(targetCellNumber, targetSize) = oldForces(cellNumber, particleIndex);
-          particleIDs(targetCellNumber, targetSize) = particleIDs(cellNumber, particleIndex);
-          typeIDs(targetCellNumber, targetSize) = typeIDs(cellNumber, particleIndex);
+          data.positions(targetCellNumber, targetSize) = data.positions(cellNumber, particleIndex);
+          data.velocities(targetCellNumber, targetSize) = data.velocities(cellNumber, particleIndex);
+          data.forces(targetCellNumber, targetSize) = data.forces(cellNumber, particleIndex);
+          data.oldForces(targetCellNumber, targetSize) = data.oldForces(cellNumber, particleIndex);
+          data.particleIDs(targetCellNumber, targetSize) = data.particleIDs(cellNumber, particleIndex);
+          data.typeIDs(targetCellNumber, targetSize) = data.typeIDs(cellNumber, particleIndex);
           ++targetSize;
 
-          auto &size = cellSizes(cellNumber);
-          --size;
-          positions(cellNumber, particleIndex) = positions(cellNumber, size);
-          velocities(cellNumber, particleIndex) = velocities(cellNumber, size);
-          forces(cellNumber, particleIndex) = forces(cellNumber, size);
-          oldForces(cellNumber, particleIndex) = oldForces(cellNumber, size);
-          particleIDs(cellNumber, particleIndex) = particleIDs(cellNumber, size);
-          typeIDs(cellNumber, particleIndex) = typeIDs(cellNumber, size);
+          removeParticle(particleIndex, cellNumber);
 
         }
       }
-      hasMoved(cellNumber) = false;
+    data.hasMoved(cellNumber) = false;
   }
 };

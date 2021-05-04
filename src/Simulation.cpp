@@ -20,22 +20,24 @@ void getRelativeCellCoordinatesDevice(int cellNumber, int cellsX, int cellsY, in
 }
 
 Simulation::Simulation(SimulationConfig config) : config(std::move(config)), iteration(0) {
-  Kokkos::Timer timer;
   initializeSimulation();
 }
+
+SimulationConfig test();
 
 void Simulation::start() {
   spdlog::info("Running Simulation...");
   Kokkos::Timer timer;
 //  cudaProfilerStart();
-  for (; iteration < config.iterations; ++iteration) {
+  for (; iteration < 1000; ++iteration) {
     calculateForcesNewton3();
     calculateVelocitiesAndPositions();
     moveParticles();
-    if (config.vtk && iteration % config.vtk->second == 0) {
-      writeVTKFile(config.vtk.value().first);
-    }
+//    if (config.vtk && iteration % config.vtk->second == 0) {
+//      writeVTKFile(config.vtk.value().first);
+//    }
   }
+  spdlog::info("Finished simulating. Time: " + std::to_string(timer.seconds()) + " seconds.");
 //  cudaProfilerStop();
 }
 
@@ -119,7 +121,6 @@ void Simulation::calculateForcesNewton3() const {
   // Save oldForces and initialize new forces
   Kokkos::deep_copy(oldForces, forces);
   Kokkos::deep_copy(forces, config.globalForce);
-
   Kokkos::fence();
 
   for (int color = 0; color < 8; ++color) {
@@ -127,7 +128,7 @@ void Simulation::calculateForcesNewton3() const {
     Kokkos::parallel_for(
         "calculateForcesForColor: " + std::to_string(color) + "  Iteration: " + std::to_string(iteration),
         Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, colorCells.size()),
-        CalculateForces(*this, colorCells)
+        CalculateForces(createFunctorData(), colorCells)
     );
     Kokkos::fence();
   }
@@ -139,7 +140,7 @@ void Simulation::calculateVelocitiesAndPositions() const {
   Kokkos::parallel_for(
       "calculateVelocitiesAndPosition  Iteration: " + std::to_string(iteration),
       Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, numCells),
-      CalculateVelocitiesAndPositions(*this)
+      CalculateVelocitiesAndPositions(createFunctorData())
   );
   Kokkos::fence();
 }
@@ -152,7 +153,7 @@ void Simulation::moveParticles() {
     while (!h_moveWasSuccessful) {
       Kokkos::parallel_for("moveParticles",
                            Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, colorCells.size()),
-                           MoveParticles(*this, colorCells)
+                           MoveParticles(createFunctorData(), colorCells)
       );
       Kokkos::fence();
       Kokkos::deep_copy(h_moveWasSuccessful, moveWasSuccessful);
@@ -536,6 +537,34 @@ int Simulation::getCorrectCellNumber(const Coord3D &position) const {
   return getCellNumberFromRelativeCellCoordinates(static_cast<int>(cellPosition.x),
                                                   static_cast<int>(cellPosition.y),
                                                   static_cast<int>(cellPosition.z));
+}
+
+FunctorData Simulation::createFunctorData() const {
+  return FunctorData(
+      positions,
+      velocities,
+      forces,
+      oldForces,
+      particleIDs,
+      typeIDs,
+      cellSizes,
+      capacity,
+      hasMoved,
+      particleProperties,
+      boxMin,
+      bottomLeftCorners,
+      numCellsX,
+      numCellsY,
+      numCellsZ,
+      numCells,
+      config.cutoff,
+      config.deltaT,
+      isHalo,
+      c08Pairs,
+      periodicTargetCellNumbers,
+      boundaryCondition,
+      moveWasSuccessful
+      );
 }
 
 std::pair<int,int> Simulation::getCellColors(const int cellNumber) const {

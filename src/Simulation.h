@@ -6,16 +6,13 @@
 
 #include "SimulationConfig/SimulationConfig.h"
 #include "Types/ParticleProperies.h"
+#include "Functors/FunctorData.h"
+#include "BoundaryCondition.h"
 #include <spdlog//spdlog.h>
 #include <Kokkos_Core.hpp>
 #include <Kokkos_UnorderedMap.hpp>
 #include <Kokkos_DualView.hpp>
 #include <vector>
-
-/// A Struct to define the boundary condition that is used in the simulation
-enum BoundaryCondition {
-  none, periodic, reflecting
-};
 
 /**
  * @brief This class controls the simulation. The simulation space is partitioned into cells, which contain the particles.
@@ -191,6 +188,8 @@ class Simulation {
    * of all particles in the simulation
    */
   void writeVTKFile(const std::string &fileBaseName) const;
+
+  FunctorData createFunctorData() const;
 
   /**
    * The simulation is initializes. Because of the gcc cuda compiler, the initialization of the simulation has to happen
