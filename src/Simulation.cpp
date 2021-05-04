@@ -11,14 +11,6 @@
 #include "Functors/MoveParticles.h"
 //#include <cuda_profiler_api.h>
 
-KOKKOS_INLINE_FUNCTION
-void getRelativeCellCoordinatesDevice(int cellNumber, int cellsX, int cellsY, int &x, int &y, int &z) {
-  z = cellNumber / (cellsX * cellsY);
-  cellNumber -= z * (cellsX * cellsY);
-  y = cellNumber / cellsX;
-  x = cellNumber - y * cellsX;
-}
-
 Simulation::Simulation(SimulationConfig config) : config(std::move(config)), iteration(0) {
   initializeSimulation();
 }

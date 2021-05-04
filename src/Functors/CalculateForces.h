@@ -24,11 +24,12 @@ constexpr float twentyFourEpsilonSigmaPow6 = 24 * epsilon * sigmaPow6;
 constexpr float fourtyEightEpsilonSigmaPow12 = twentyFourEpsilonSigmaPow6 * 2 * sigmaPow6;
 
 /**
- * A functor for use inside of a parallel_for(). Calculates the forces between particles for the c08 base step with the
- * specified cell number
+ * A functor for usage inside of a parallel_for(). Calculates the forces between particles for the c08 base step with
+ * the specified cell number.
  */
 class CalculateForces {
 
+  /// A class that saves information about the simulation for the functors to use.
   const FunctorData data;
 
   /// A view that contains the cell numbers of the base steps that have to be calculated.
@@ -45,9 +46,13 @@ class CalculateForces {
    * left corner of the grid has the coordinates (0,0,0) and all other cells have coordinates (n,m,k) where n, m, k are
    * inside the natural numbers.
    * The relative cell coordinates are not the same as the bottom left corner coordinates of a cell.
+   *
+   * TODO maybe this can be moved into a super class of the functors to avoid code duplication. Have to test first, with
+   * CUDA some things are not so simple...
+   * TODO maybe I can use a std::array here, but I don't know if it works with CUDA
    */
   KOKKOS_INLINE_FUNCTION
-  void getRelativeCellCoordinatesDevice(int cellNumber, int &x, int &y, int &z) const {
+  void relativeCellCoordinates(int cellNumber, int &x, int &y, int &z) const {
     z = cellNumber / (data.numCells[0] * data.numCells[1]);
     cellNumber -= z * (data.numCells[0] * data.numCells[1]);
     y = cellNumber / data.numCells[0];
@@ -83,10 +88,10 @@ class CalculateForces {
   KOKKOS_INLINE_FUNCTION void operator() (int index) const {
     const int baseCellNumber = baseCells(index);
     int relativeX, relativeY, relativeZ;
-    getRelativeCellCoordinatesDevice(baseCellNumber,
-                                     relativeX,
-                                     relativeY,
-                                     relativeZ);
+    relativeCellCoordinates(baseCellNumber,
+                            relativeX,
+                            relativeY,
+                            relativeZ);
 
     /*
      * This tests if the base cell is somewhere along the back top right sides of the simulation cube. If so, the c08

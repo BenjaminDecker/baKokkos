@@ -7,6 +7,13 @@
 #include <Kokkos_UnorderedMap.hpp>
 #include "../Simulation.h"
 #include "../BoundaryCondition.h"
+
+/**
+ * A class that saves information about the simulation for the functors to use. The functors cannot access data from the
+ * simulation class directly if the code is compiled for CUDA. The FunctorData contains all the information used by all
+ * functors combined so there is a bit of redundancy in the data that is copied to the functors, but the performance
+ * impact is negligible and the code is a lot cleaner this way.
+ */
 class FunctorData {
  public:
   FunctorData(const Kokkos::View<Coord3D **> &positions,

@@ -9,12 +9,13 @@
 #include "FunctorData.h"
 
 /**
- * A functor for use inside of a parallel_for(). For all particles in the cell with the specified cell number, this
+ * A functor for usage inside of a parallel_for(). For all particles in the cell with the specified cell number, this
  * calculates the new velocities of the particles based on the force acting on them and their previous velocities.
  * After this, the new positions based on the calculated velocities and the time step length is calculated.
  */
 class CalculateVelocitiesAndPositions {
 
+  /// A class that saves information about the simulation for the functors to use.
   const FunctorData data;
 
  public:
