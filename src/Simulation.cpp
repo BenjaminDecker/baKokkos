@@ -21,7 +21,7 @@ void Simulation::start() {
   spdlog::info("Running Simulation...");
   Kokkos::Timer timer;
 //  cudaProfilerStart();
-  for (; iteration < 1000; ++iteration) {
+  for (; iteration < config.iterations; ++iteration) {
     calculateForcesNewton3();
     calculateVelocitiesAndPositions();
     moveParticles();
