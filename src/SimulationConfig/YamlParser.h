@@ -14,8 +14,7 @@
 #include "GaussianGenerator.h"
 
 /**
- * @brief and stores ParticleGroups from a given .yaml file
- * @see ParticleGroup
+ * @brief Reads a yaml file and saves its configuration data
  */
 class YamlParser {
  public:

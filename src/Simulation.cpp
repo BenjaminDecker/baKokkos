@@ -34,6 +34,8 @@ void Simulation::start() {
 }
 
 void Simulation::addParticles(const std::vector<Particle> &particles) {
+
+  // Create copies of particle property views in host space
   auto h_positions = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(), positions);
   auto h_velocities = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(), velocities);
   auto h_forces = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(), forces);
@@ -51,6 +53,7 @@ void Simulation::addParticles(const std::vector<Particle> &particles) {
           << std::endl;
       exit(1);
     }
+    // If the capacity is too low, resize all cells by multiplying their capacity by 2.
     if (h_cellSizes(cellNumber) == h_capacity()) {
       h_capacity() *= 2;
       Kokkos::resize(h_positions, numCells, h_capacity());
@@ -60,6 +63,8 @@ void Simulation::addParticles(const std::vector<Particle> &particles) {
       Kokkos::resize(h_particleIDs, numCells, h_capacity());
       Kokkos::resize(h_typeIDs, numCells, h_capacity());
     }
+
+    // Insert the new particle at the end of the cell and increment its size.
     h_positions(cellNumber, h_cellSizes(cellNumber)) = particle.position;
     h_velocities(cellNumber, h_cellSizes(cellNumber)) = particle.velocity;
     h_forces(cellNumber, h_cellSizes(cellNumber)) = particle.force;
@@ -68,6 +73,8 @@ void Simulation::addParticles(const std::vector<Particle> &particles) {
     h_typeIDs(cellNumber, h_cellSizes(cellNumber)) = particle.typeID;
     ++h_cellSizes(cellNumber);
   }
+
+  // After all particles have been inserted, resize the views in device space to their final capacity.
   Kokkos::resize(positions, numCells, h_capacity());
   Kokkos::resize(velocities, numCells, h_capacity());
   Kokkos::resize(forces, numCells, h_capacity());
@@ -75,6 +82,7 @@ void Simulation::addParticles(const std::vector<Particle> &particles) {
   Kokkos::resize(particleIDs, numCells, h_capacity());
   Kokkos::resize(typeIDs, numCells, h_capacity());
 
+  // Copy the particles from the host views into the device views.
   Kokkos::deep_copy(positions, h_positions);
   Kokkos::deep_copy(velocities, h_velocities);
   Kokkos::deep_copy(forces, h_forces);
@@ -87,6 +95,8 @@ void Simulation::addParticles(const std::vector<Particle> &particles) {
 
 std::vector<Particle> Simulation::getParticles() const {
   std::vector<Particle> particles;
+
+  // Create copies of the particle property views in host space
   const auto h_positions = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(), positions);
   const auto h_velocities = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(), velocities);
   const auto h_forces = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(), forces);
@@ -95,6 +105,7 @@ std::vector<Particle> Simulation::getParticles() const {
   const auto h_typeIDs = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(), typeIDs);
   const auto h_cellSizes = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(), cellSizes);
 
+  // Create particle objects by reading their information from the views and inserting them into the vector.
   for (int cellNumber = 0; cellNumber < numCells; ++cellNumber) {
     for (int i = 0; i < h_cellSizes(cellNumber); ++i) {
       particles.emplace_back(h_particleIDs(cellNumber, i),
@@ -110,13 +121,21 @@ std::vector<Particle> Simulation::getParticles() const {
 }
 
 void Simulation::calculateForcesNewton3() const {
-  // Save oldForces and initialize new forces
+  // Override oldForces with forces, Override all entries of forces with the global force of the simulation (e.g. gravity)
   Kokkos::deep_copy(oldForces, forces);
   Kokkos::deep_copy(forces, config.globalForce);
   Kokkos::fence();
 
+  // For all 8 colors in the c08 coloring
   for (int color = 0; color < 8; ++color) {
+
+    /*
+     * Create a copy of the view of the corresponding color. (Reminder: copying views is cheap and does not mean
+     * copying the data saved by the views)
+     */
     const auto colorCells = c08baseCells[color];
+
+    // Run the c08-base-step for the force calculation for all cells of one color.
     Kokkos::parallel_for(
         "calculateForcesForColor: " + std::to_string(color) + "  Iteration: " + std::to_string(iteration),
         Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, colorCells.size()),
@@ -127,8 +146,13 @@ void Simulation::calculateForcesNewton3() const {
 }
 
 void Simulation::calculateVelocitiesAndPositions() const {
+  /*
+   * Reset hasMoved. Some of the hasMoved entries might be set to true by the functor if particles
+   * leave their cells
+   */
   Kokkos::deep_copy(hasMoved, false);
   Kokkos::fence();
+
   Kokkos::parallel_for(
       "calculateVelocitiesAndPosition  Iteration: " + std::to_string(iteration),
       Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, numCells),
@@ -137,19 +161,28 @@ void Simulation::calculateVelocitiesAndPositions() const {
   Kokkos::fence();
 }
 
+
 void Simulation::moveParticles() {
   for (int color = 0; color < 27; ++color) {
+
+    // Reset moveWasSuccessful
     Kokkos::deep_copy(moveWasSuccessful, true);
-    bool h_moveWasSuccessful = false;
-    const auto colorCells = moveParticlesBaseCells[color];
-    while (!h_moveWasSuccessful) {
+    const auto baseCells = moveParticlesBaseCells[color];
+
+    // Create a copy of moveWasSuccessful in host space and initialize it to false
+    auto h_moveWasSuccessful = Kokkos::create_mirror_view(moveWasSuccessful);
+    h_moveWasSuccessful() = false;
+
+    while (!h_moveWasSuccessful()) {
       Kokkos::parallel_for("moveParticles",
-                           Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, colorCells.size()),
-                           MoveParticles(createFunctorData(), colorCells)
+                           Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, baseCells.size()),
+                           MoveParticles(createFunctorData(), baseCells)
       );
       Kokkos::fence();
+
+      // If the move was not successful, moveWasSuccessful will be set to false by the functor and the capacity is doubled
       Kokkos::deep_copy(h_moveWasSuccessful, moveWasSuccessful);
-      if (!h_moveWasSuccessful) {
+      if (!h_moveWasSuccessful()) {
         int h_capacity;
         Kokkos::deep_copy(h_capacity, capacity);
         h_capacity *= 2;

@@ -1,5 +1,5 @@
 //
-// Created by ffbde on 12/11/2020.
+// Created by Benjamin Decker on 12/11/2020.
 //
 
 #pragma once
@@ -10,6 +10,11 @@
 #include "../Types/Coord3D.h"
 #include "YamlParser.h"
 
+/**
+ * The SimulationConfig class is given to the constructor of the Simulation class. It contains all information needed
+ * to construct a Simulation. It can either be constructed by specifying information in its constructor or by reading
+ * the command line and parsing a yaml file.
+ */
 class SimulationConfig {
  public:
   /// Structure type that is used to store and iterate over particles
