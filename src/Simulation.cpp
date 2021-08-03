@@ -22,12 +22,15 @@ void Simulation::start() {
   Kokkos::Timer timer;
 //  cudaProfilerStart();
   for (; iteration < config.iterations; ++iteration) {
+    if(iteration % 200 == 0) {
+      spdlog::info("Iteration:\t" + std::to_string(iteration));
+    }
     calculateForcesNewton3();
     calculateVelocitiesAndPositions();
     moveParticles();
-//    if (config.vtk && iteration % config.vtk->second == 0) {
-//      writeVTKFile(config.vtk.value().first);
-//    }
+    if (config.vtk && iteration % config.vtk->second == 0) {
+      writeVTKFile(config.vtk.value().first);
+    }
   }
   spdlog::info("Finished simulating. Time: " + std::to_string(timer.seconds()) + " seconds.");
 //  cudaProfilerStop();
@@ -165,24 +168,27 @@ void Simulation::calculateVelocitiesAndPositions() const {
 void Simulation::moveParticles() {
   for (int color = 0; color < 27; ++color) {
 
-    // Reset moveWasSuccessful
-    Kokkos::deep_copy(moveWasSuccessful, true);
     const auto baseCells = moveParticlesBaseCells[color];
 
-    // Create a copy of moveWasSuccessful in host space and initialize it to false
-    auto h_moveWasSuccessful = Kokkos::create_mirror_view(moveWasSuccessful);
-    h_moveWasSuccessful() = false;
+    // This has to be a normal variable and not a host view. A Host view would point to the exact same memory if
+    // thr program is not compiled for the GPU
+    bool h_moveWasSuccessful;
 
-    while (!h_moveWasSuccessful()) {
+    do {
+      // Reset moveWasSuccessful
+      Kokkos::deep_copy(moveWasSuccessful, true);
+
       Kokkos::parallel_for("moveParticles",
                            Kokkos::RangePolicy<Kokkos::Schedule<Kokkos::Dynamic>>(0, baseCells.size()),
                            MoveParticles(createFunctorData(), baseCells)
-      );
+                           );
       Kokkos::fence();
 
-      // If the move was not successful, moveWasSuccessful will be set to false by the functor and the capacity is doubled
-      Kokkos::deep_copy(h_moveWasSuccessful, moveWasSuccessful);
-      if (!h_moveWasSuccessful()) {
+      // Check if the move was successful
+      h_moveWasSuccessful = Kokkos::create_mirror_view_and_copy(Kokkos::DefaultHostExecutionSpace(), moveWasSuccessful)();
+
+      // If the move was not successful the capacity is doubled
+      if (!h_moveWasSuccessful) {
         int h_capacity;
         Kokkos::deep_copy(h_capacity, capacity);
         h_capacity *= 2;
@@ -193,9 +199,8 @@ void Simulation::moveParticles() {
         Kokkos::resize(oldForces, numCells, h_capacity);
         Kokkos::resize(particleIDs, numCells, h_capacity);
         Kokkos::resize(typeIDs, numCells, h_capacity);
-        Kokkos::deep_copy(moveWasSuccessful, true);
       }
-    }
+    } while(!h_moveWasSuccessful);
   }
 }
 
